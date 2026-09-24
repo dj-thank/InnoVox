@@ -1,0 +1,31 @@
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Dependencies and builds
+node_modules/
+dist/
+coverage/
+target/
+.next/
+.turbo/
+
+# Runtime state and private observations
+.innovox/
+data/
+recordings/
+transcripts/
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+*.log
+
+# Local editor/OS files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
