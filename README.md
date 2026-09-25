@@ -25,8 +25,10 @@ Public source availability is separate from a publicly available service.
    interruptions, and bind each answer to its intended task.
 
 The initial direction is **cloud first, GPT Live for the voice experience, and
-Astra for reasoning**. The first supported transport, credentials, and production
-hosting must be selected and verified before a live integration is claimed.
+Astra for reasoning**. The selected integration approach is the **GPT Live public
+API with a new InnoVox-specific API key**. Key provisioning, authenticated provider
+access, the exact wire transport, and production hosting remain to be verified
+or selected before a live integration is claimed.
 
 The long-term direction is the same product on a hosted service or one capable
 personal computer. Shared behavior, exportable data, documented protocols, and

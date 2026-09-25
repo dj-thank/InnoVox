@@ -8,7 +8,8 @@ The order below expresses product intent, not a claim that these features exist.
 - [x] Public GitHub repository exists.
 - [x] Product direction and development instructions published.
 - [ ] Maintainer selects the source-code license.
-- [ ] GPT Live transport and credential approach selected.
+- [x] GPT Live public API and a new InnoVox-specific key selected.
+- [ ] Secure key provisioning and authenticated provider access verified.
 - [ ] First implementation stack and its reasons recorded.
 
 ## M1 — A reliable conversation-to-consultation slice

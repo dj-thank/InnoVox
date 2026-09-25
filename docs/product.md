@@ -67,11 +67,21 @@ Neither means a proprietary model's weights are available locally.
   capture, model inference, speech onset, and answer delivery.
 - Recovery after disconnection, restart, correction, and session branching.
 
+## Confirmed integration choice
+
+Use the GPT Live public API and create a new API key dedicated to InnoVox.
+GPT Live remains the initial voice provider and Astra the reasoning head.
+This selects the integration and credential approach; it does not establish
+that a key has been created or that authenticated provider access works.
+
 ## Maintainer decisions still required
 
-- GPT Live transport and credential provisioning/reuse.
 - Source-code license.
 - Initial hosting environment, service exposure, and operating budget.
 
 These are deployment/ownership choices, not permission to put credentials or
 private conversations in the public repository.
+
+Credential provisioning and a bounded authenticated integration check remain
+execution work under the selected approach. The exact wire transport and SDK
+versions must be chosen and validated during implementation.

@@ -22,6 +22,16 @@ decisions, consultations, delivery records, and replay. Provider SDK objects are
 translated at adapter boundaries. A cloud service and a local installation use
 the same domain behavior and contract tests.
 
+## Initial provider connection
+
+The selected approach is the GPT Live public API with a new API key dedicated
+to InnoVox. GPT Live provides the voice experience and Astra supplies reasoning
+through their adapter boundaries. Keep the long-lived provider key on the server
+or in a protected local configuration, outside browser bundles and public source.
+
+The exact wire transport and SDK versions remain implementation decisions.
+Credential creation and authenticated provider access are not yet verified.
+
 ## Cloud-first capture
 
 A cloud service cannot observe arbitrary desktop windows or private local
