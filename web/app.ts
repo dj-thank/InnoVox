@@ -67,11 +67,19 @@ async function refresh() {
   }
 }
 el('login-form').addEventListener('submit', e => {
-  e.preventDefault(); token = value('token');
-  void refresh().then(() => { sessionStorage.setItem('innovox.access', token); el<HTMLInputElement>('token').value = ''; notice('接続しました。'); })
+  e.preventDefault(); const input = value('token').trim();
+  void (async () => {
+    token = '';
+    if (/^\d{4}-?\d{4}$/.test(input)) {
+      const paired = await request<{ accessToken: string }>('/api/pairing/exchange', { code: input }); token = paired.accessToken;
+    } else token = input;
+    await refresh(); sessionStorage.setItem('innovox.access', token); el<HTMLInputElement>('token').value = ''; notice('接続しました。');
+  })()
     .catch(e => { token = ''; notice(e.message); });
 });
-bind('logout', () => { voice.cleanup(); token = ''; sessionStorage.removeItem('innovox.access'); location.reload(); });
+bind('logout', async () => { voice.cleanup(); try { await request('/api/logout', {}); } finally {
+  token = ''; sessionStorage.removeItem('innovox.access'); location.reload();
+} });
 bind('sample', async () => {
   const p = await request<Project>('/api/demo', {}); projectId = p.id; sessionStorage.setItem('innovox.project', p.id); await refresh();
   notice('合成データのサンプルです。Astraや音声APIを呼ばず、保存と回答の流れを確認できます。');

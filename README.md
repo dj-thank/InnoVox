@@ -34,11 +34,14 @@ pnpm init-local
 pnpm start
 ```
 
-Open `http://127.0.0.1:4317` and connect with the InnoVox access token generated
-in `.innovox/access-token`. The explicit synthetic sample works without OpenAI
+Open `http://127.0.0.1:4317`, run `pnpm pair` in another terminal, and enter its
+one-time code. The owner token in `.innovox/access-token` still supports trusted
+collectors. The explicit synthetic sample works without OpenAI
 credentials. `pnpm check` runs the tests and `pnpm diagnose` reports environment
 capabilities. See [operations](docs/operations.md) for provider setup boundaries,
 collection, cloud deployment preparation, and current limits.
+See [daily operation](docs/daily-operation.md) for Mac login startup, browser pairing,
+verified state backups and the remaining device checks.
 
 ## What we are building
 

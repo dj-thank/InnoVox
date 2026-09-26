@@ -2,6 +2,38 @@
 
 Date: 2026-09-26. Scope: the first single-user conversation/consultation preview.
 
+## Mac operation preparation (0.4)
+
+- `pnpm check` passed all 55 local tests with the optional native Codex binary.
+  Without that selected binary, 54 tests run and one native test is skipped.
+- HTTP tests exchange a one-time code for a separate browser credential, reject
+  code reuse and cross-origin exchange, prevent a paired browser from issuing
+  codes, and verify revocation on logout. Unit checks cover code/session expiry
+  and the five-attempt limit.
+- Online SQLite backup/restore tests include committed WAL data and an answered
+  consultation with a claimed delivery. The live writer remains unchanged; the
+  restored service treats the in-flight delivery as unknown. Changed bytes and
+  attempts to replace existing files are rejected.
+- Mac LaunchAgent generation binds the exact checkout and Node path and escapes
+  XML correctly without embedding credentials. The Mac CI test also runs Apple's
+  `plutil` against that generated plist; this is separate from actual login/startup
+  and crash-recovery acceptance on a user's Mac.
+- The Mac report script checks metadata/tool presence only. Shell syntax is checked
+  in Mac CI. Merely supplying the script is not evidence that a Mac was inspected.
+
+The development host's authenticated preview was exposed over a private HTTPS
+connection for device testing. Automated browser access was blocked by the client,
+so no browser, microphone or native Mac acceptance is inferred from server health.
+Manual access from the intended Mac also failed. The operator reports a tailnet
+requiring individual permissions; its current ACL/grants policy has not yet been
+read. This is a leading configuration question, not a confirmed diagnosis. See
+[tailnet access](tailnet-access.md) for the separate policy-review boundary.
+A separate attempt to attach a control socket to a primary WebSocket session
+returned HTTP 404 and was closed through the primary connection. The documented
+sideband path targets [WebRTC/SIP sessions](https://developers.openai.com/api/docs/guides/voice-server-controls?api=live);
+that result does not establish a WebRTC control failure or successful server-side
+termination. Server-enforced voice lifetime remains an open production requirement.
+
 ## Authenticated provider check (0.3)
 
 On 2026-09-26 at 04:46 UTC, `pnpm provider-check --live` passed against real

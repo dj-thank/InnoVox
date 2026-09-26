@@ -39,6 +39,8 @@ synthetic request and optional generated-audio check. Configuration presence alo
 does not establish either provider result.
 
 For Mac, read [the feature and permission guide](platforms/macos.md).
+For browser pairing, Mac startup and verified backup/restore, see
+[daily operation](daily-operation.md).
 
 ## Behavior and limits
 
@@ -108,11 +110,15 @@ optional Codex answer-delivery bridge and its native verification limits.
 
 ## API contract
 
-All `/api/*` routes require `Authorization: Bearer <INNOVOX_ACCESS_TOKEN>`.
+All `/api/*` routes except `/api/pairing/exchange` require an owner or unexpired
+paired-browser bearer credential. Code issuance requires the owner credential.
 Browser requests must use the configured origin. Payloads are JSON, bounded to
 300 KB, validated by the versioned contracts in `src/contracts.ts`.
 
 - `GET /api/state?projectId=...`: current projections, recent messages and capabilities.
+- `POST /api/pairing`: owner-only creation of a one-use five-minute browser code.
+- `POST /api/pairing/exchange`: exchange that code for a twelve-hour browser credential.
+- `POST /api/logout`: revoke the current paired-browser credential.
 - `GET /api/journal?after=N`: bounded audit pages with a monotonic cursor.
 - `POST /api/projects`, `PUT /api/projects/:id`: conditions and explicit revision checking.
 - `POST /api/events`: version-1 event ingestion; duplicate id/content is idempotent.
