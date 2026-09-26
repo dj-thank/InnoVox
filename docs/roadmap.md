@@ -48,14 +48,19 @@ real microphone, model, agent-delivery or human acceptance.
 
 ## M3 — One real session connector
 
-Selected-file message-log parsers and a collector are implemented. Synthetic
-collector-to-server checks do not close the real-app acceptance items below.
+Selected-file collection, explicitly scoped multi-session discovery/backfill/watch,
+and an optional Codex App Server delivery bridge are implemented. A native test
+with an isolated Codex CLI `0.155.0-alpha.16.4` on Windows verifies capture through
+persisted answer delivery with synthetic messages and no model turn. Protocol
+acceptance, source persistence and actual model use remain separate. This does
+not close desktop attachment or the real working-agent acceptance items below.
 
 - Observe an existing supported Codex or Claude Code session.
 - Document the tested app/protocol versions and precise visibility limits.
 - Deliver a context supplement without a duplicate running session.
 - Switch the foreground app during a consultation without misrouting its reply.
 - Recover from log rotation, compaction, branch changes, and reconnect as supported.
+- Add Claude delivery and verify the complete cross-application acceptance loop.
 
 M2 and M3 can be developed as independent adapters against the M1 contracts.
 

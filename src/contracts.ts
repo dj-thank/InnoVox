@@ -16,6 +16,7 @@ export const eventSchema = z.object({
 }).strict();
 export const messageSchema = z.object({
   role: z.enum(['user', 'assistant', 'tool']), text: text(16000),
+  relay: z.object({ deliveryId: id, digest: z.string().regex(/^[a-f0-9]{64}$/) }).strict().optional(),
 }).strict();
 export const proposalSchema = z.object({
   question: text(1200), reason: text(2400),
@@ -42,7 +43,7 @@ export const answerSchema = z.object({
   channel: z.enum(['typed', 'voice']),
 }).strict();
 export const deliveryReceiptSchema = z.object({
-  status: z.enum(['delivered', 'unknown']),
+  status: z.enum(['accepted', 'delivered', 'unknown']),
   receipt: text(1000),
 }).strict();
 
@@ -69,11 +70,13 @@ export type Consultation = Proposal & {
 };
 export type Delivery = {
   id: string; consultationId: string; projectId: string; adapter: string; sessionId: string;
-  epoch: number; text: string; status: 'queued' | 'claimed' | 'delivered' | 'unknown' | 'cancelled';
+  epoch: number; text: string; status: 'queued' | 'claimed' | 'accepted' | 'delivered' | 'unknown' | 'cancelled';
   receipt: string | null;
   answerText?: string;
   question?: string;
   evidenceEventIds?: string[];
+  contextCurrent?: boolean;
+  claimDeadline?: string;
 };
 
 export class DomainError extends Error {

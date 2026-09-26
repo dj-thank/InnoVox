@@ -40,6 +40,8 @@ export function buildServer(options: ServerOptions) {
   const { store, provider } = options;
   const analyzer = new Analyzer(store, provider, options.maxAnalyses ?? 30);
   const voice = new VoiceConversations(store, provider, options.maxAnalyses ?? 30);
+  const deliveryView = (projectId?: string) => store.deliveries(projectId).map(d => ({ ...d,
+    contextCurrent: d.status === 'queued' ? store.contextCurrent(store.consultation(d.consultationId)) : undefined }));
   const files: Record<string, [string, string]> = {
     '/': ['web/index.html', 'text/html'], '/app.js': ['dist/web/app.js', 'text/javascript'],
     '/voice.js': ['dist/web/voice.js', 'text/javascript'], '/style.css': ['web/style.css', 'text/css'],
@@ -67,14 +69,20 @@ export function buildServer(options: ServerOptions) {
         if (projectId) store.project(id.parse(projectId));
         const sessions = store.sessions(projectId);
         send(res, 200, { projects: store.projects(), sessions, consultations: store.consultations(projectId).map(c => ({ ...c, contextCurrent: store.contextCurrent(c) })),
-          deliveries: store.deliveries(projectId), analysis: analyzer.status(),
+          deliveries: deliveryView(projectId), analysis: analyzer.status(),
           messages: sessions.flatMap(s => store.events(s.projectId, s.adapter, s.sessionId, s.epoch, 20)),
           capabilities: { providerConfigured: provider.available, reasoningModel: 'gpt-6-astra', voiceModel: 'gpt-live-1',
-            nativeScreenCapture: false, automaticSessionDelivery: false, deployment: 'single-user-preview' } }); return;
+            nativeScreenCapture: false, automaticSessionDelivery: false, deliveryBridgeAvailable: 'codex-stdio', deployment: 'single-user-preview' } }); return;
       }
       if (req.method === 'GET' && url.pathname === '/api/journal') {
         const after = z.coerce.number().int().nonnegative().parse(url.searchParams.get('after') ?? 0);
         send(res, 200, { events: store.journal(after) }); return;
+      }
+      if (req.method === 'GET' && url.pathname === '/api/deliveries') {
+        const projectId = id.parse(url.searchParams.get('projectId'));
+        const adapter = id.parse(url.searchParams.get('adapter')), sessionId = id.parse(url.searchParams.get('sessionId'));
+        store.project(projectId);
+        send(res, 200, { deliveries: deliveryView(projectId).filter(d => d.adapter === adapter && d.sessionId === sessionId) }); return;
       }
       if (req.method === 'POST' && url.pathname === '/api/projects') { send(res, 201, store.createProject(await body(req))); return; }
       if (req.method === 'POST' && url.pathname === '/api/demo') { await body(req); send(res, 200, seedDemo(store)); return; }

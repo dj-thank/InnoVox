@@ -20,10 +20,11 @@ Question forwarding after AskUser is one possible input, not the central trigger
 ### R01 — Read conversations and screens promptly
 
 The requested inputs include structured conversation data and the visible work
-context. Current code follows one explicitly selected Codex/Claude Code JSONL
-file and extracts supported user/assistant text. It does not discover all active
-sessions, attach to every running application, or capture screens. Live capture
-latency and real application-version coverage are not measured.
+context. Current code follows selected Codex/Claude Code JSONL files and can
+discover/backfill/watch matching sessions within explicit roots and workspace
+metadata. Bounds, skipped files, ambiguity and actual message imports are reported
+separately. It does not attach to every desktop app or capture screens. Live
+capture latency and broad application-version coverage are not measured.
 
 Status: partial. See `src/capture.ts` and the Mac guide.
 
@@ -78,21 +79,24 @@ Status: partial. No claim of a fully hands-free production experience.
 
 Answers now include the question, rationale, and evidence in their delivery text.
 The queue retains the destination session/epoch and rejects stale context.
-Actual Codex/Claude session-input adapters are absent. Copying text or marking a
-delivery through a test API is not proof that an agent received it.
+An optional Codex App Server bridge now verifies a loaded target and either
+steers an active turn or explicitly appends context for a later turn. The latter
+was verified against an isolated installed Codex runtime and its persisted log.
+This is not proof of active model use or ordinary desktop attachment. Claude
+delivery remains absent. Copying text is not a delivery receipt.
 
-Status: not complete; a critical break in the original product loop.
+Status: partial; native transport/persistence is verified in the bounded test,
+while actual working-agent and whole-product acceptance remain open.
 
 ### R07 — Understand surrounding sessions and survive app switching
 
 Related records from sessions already connected to the same project can inform
 Astra. Response binding does not depend on the foreground window. Automatic
-startup discovery/backfill, semantic project-to-session association, actual
-Codex-to-Claude switching, and delivery readback still require implementation
-and device verification.
+startup discovery/backfill inside explicit roots is now implemented. Semantic
+association across arbitrary workspaces, actual Codex-to-Claude switching,
+desktop attachment, and complete working-agent readback remain open.
 
-Status: partial. Cross-session storage is not automatic discovery or a working
-cross-application loop.
+Status: partial. Scoped metadata discovery is not a working cross-application loop.
 
 ### R08 — Open interfaces, version handling, robust operation, speed
 
@@ -126,7 +130,8 @@ Status: architecture direction and partial runtime portability, not quality pari
 
 The repository and source are public. The maintainer's final license choice is MIT,
 superseding the earlier Apache-2.0 choice. The selected provider route is the public
-API with a new InnoVox-specific key; key creation has not been confirmed.
+API with a new InnoVox-specific key; secure runtime configuration and authenticated
+provider access still need verification.
 
 Status: repository/license delivered; credentials pending.
 
@@ -166,8 +171,8 @@ or a Mac CI job passed.
    and complete answer envelopes.
 2. Complete the first real agent delivery adapter and observe its receipt.
 3. Finish secure provider setup and perform the actual voice/agent loop above.
-4. Add persistent voice presence and session discovery inside an explicit source
-   scope, then measure intervention value and response latency.
+4. Add persistent voice presence, validate scoped session discovery in actual
+   use, then measure intervention value and response latency.
 5. Deliver the public hosted experience, then extend self-hosted/offline parity.
 
 Native screen capture is an independent input adapter. Its absence and the other

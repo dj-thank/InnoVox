@@ -35,6 +35,10 @@ export function normalizeLine(raw: string, lineNumber: number, context: CaptureC
     const block = object(b); return block && ['text', 'input_text', 'output_text'].includes(String(block.type)) && typeof block.text === 'string' ? block.text : '';
   }).filter(Boolean).join('\n') : '';
   if (!text.trim()) return [];
+  const marker = /^\[innovox-delivery:([A-Za-z0-9_.:-]{1,128}):([a-f0-9]{64})\]\n/.exec(text);
+  const relay = message.role === 'user' && marker && text.length <= 15000 &&
+    createHash('sha256').update(text.slice(marker[0].length)).digest('hex') === marker[2]
+    ? { deliveryId: marker[1]!, digest: marker[2]! } : undefined;
   const timestamp = typeof record.timestamp === 'string' && Number.isFinite(Date.parse(record.timestamp))
     ? new Date(record.timestamp).toISOString() : '1970-01-01T00:00:00.000Z';
   const events: ConversationEvent[] = [];
@@ -45,7 +49,8 @@ export function normalizeLine(raw: string, lineNumber: number, context: CaptureC
       eventId: createHash('sha256').update(`${lineNumber}:${part}:${raw}`).digest('hex'),
       projectId: context.projectId, source: { adapter: context.adapter, sessionId: context.sessionId, epoch: context.epoch },
       sequence: lineNumber * 1000 + part, occurredAt: timestamp, kind: 'message',
-      origin: message.role === 'user' ? 'human' : 'agent', payload: { role: message.role, text: text.slice(offset, offset + 15000) },
+      origin: relay ? 'innovox' : message.role === 'user' ? 'human' : 'agent',
+      payload: { role: message.role, text: text.slice(offset, offset + 15000), ...(relay ? { relay } : {}) },
     }));
   }
   return events;

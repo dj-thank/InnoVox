@@ -32,7 +32,7 @@
       <div class="columns">
         <aside><section><div class="section-head"><h2>保持する前提</h2><button id="edit-project" class="link">編集</button></div><div id="condition-list"></div></section>
           <section><h2>つながっている会話</h2><div id="session-list"></div></section>
-          <section class="capture-note"><h2>ローカルの会話をつなぐ</h2><p>選択した会話ログを、コレクターから取り込めます。画面の自動取得・自動入力はまだありません。</p><details><summary>取り込み先の識別子</summary><code id="project-id"></code></details></section>
+          <section class="capture-note"><h2>ローカルの会話をつなぐ</h2><p>指定した範囲の会話を発見・取り込みできます。Codexへの配送には、接続先を明示したブリッジを起動します。画面取得は未対応です。</p><details><summary>取り込み先の識別子</summary><code id="project-id"></code></details></section>
         </aside>
         <div class="content"><section><div class="section-head"><h2>いま確かめたいこと</h2><span id="question-count" class="muted"></span></div><div id="questions"></div></section>
           <section id="voice-panel" class="panel" hidden><h2>音声で相談中</h2><p id="voice-question"></p><p id="voice-status" aria-live="polite"></p><audio id="voice-audio" controls autoplay></audio><label for="voice-draft">返答の下書き</label><textarea id="voice-draft" rows="3" maxlength="4000"></textarea><p class="note">Astraが回答案を読み返した後、声で確認すると保存されます。文字で補足・訂正することもできます。送信先への反映は別に確認します。</p><div class="row"><button id="voice-use">下書きを回答欄に戻す</button><button id="voice-stop">音声を終了</button></div></section>

@@ -26,7 +26,7 @@ export class Store {
     this.db = new DatabaseSync(path);
     this.db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON;');
     const version = Number(this.db.prepare('PRAGMA user_version').get()?.user_version);
-    if (version > 2) { this.db.close(); fail('schema_version', 'Database was created by a newer InnoVox version.'); }
+    if (version > 3) { this.db.close(); fail('schema_version', 'Database was created by a newer InnoVox version.'); }
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, json TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS sessions (project TEXT, adapter TEXT, session TEXT, json TEXT NOT NULL,
@@ -43,7 +43,7 @@ export class Store {
       CREATE TABLE IF NOT EXISTS voice_turns (consultation TEXT, turn_id TEXT, digest TEXT, json TEXT,
         PRIMARY KEY(consultation,turn_id));
       CREATE INDEX IF NOT EXISTS event_session ON events(project,adapter,session,epoch,sequence);
-      PRAGMA user_version=2;
+      PRAGMA user_version=3;
     `);
     // An in-flight delivery may have reached the destination before a crash.
     for (const d of this.deliveries()) {
@@ -99,16 +99,30 @@ export class Store {
       .get(projectId, adapter, sessionId)) ?? fail('not_found', 'Session not found.', 404);
   }
   ingest(input: unknown): { event: ConversationEvent; duplicate: boolean } {
-    const event = eventSchema.parse(input);
+    let event = eventSchema.parse(input);
+    const inputDigest = hash(event);
     if (event.kind === 'message') messageSchema.parse(event.payload);
     this.project(event.projectId);
     return this.tx(() => {
       const { adapter, sessionId, epoch } = event.source;
-      const previous = this.db.prepare('SELECT digest FROM events WHERE project=? AND adapter=? AND session=? AND epoch=? AND event_id=?')
+      const previous = this.db.prepare('SELECT digest,json FROM events WHERE project=? AND adapter=? AND session=? AND epoch=? AND event_id=?')
         .get(event.projectId, adapter, sessionId, epoch, event.eventId);
       if (previous) {
-        if (previous.digest !== hash(event)) fail('event_conflict', 'Event id was reused with different content.');
-        return { event, duplicate: true };
+        if (previous.digest !== inputDigest) fail('event_conflict', 'Event id was reused with different content.');
+        return { event: decode<ConversationEvent>(previous)!, duplicate: true };
+      }
+      if (event.kind === 'message' && event.origin === 'innovox') {
+        const message = messageSchema.parse(event.payload);
+        const delivery = message.relay ? this.deliveries(event.projectId).find(d => d.id === message.relay!.deliveryId) : undefined;
+        const verified = delivery && ['claimed', 'accepted', 'delivered', 'unknown'].includes(delivery.status) &&
+          delivery.adapter === adapter && delivery.sessionId === sessionId && delivery.epoch === epoch &&
+          createHash('sha256').update(delivery.text).digest('hex') === message.relay?.digest &&
+          message.text === `[innovox-delivery:${delivery.id}:${message.relay.digest}]\n${delivery.text}`;
+        if (!verified) event = { ...event, origin: message.role === 'user' ? 'human' : 'agent' };
+        else if (delivery.status !== 'delivered') {
+          this.saveDelivery({ ...delivery, status: 'delivered', receipt: JSON.stringify({ level: 'source-message-echo', modelActionVerified: false }) });
+          this.audit('delivery.source_echo', { id: delivery.id, sourceEventId: event.eventId });
+        }
       }
       const occupied = this.db.prepare('SELECT event_id FROM events WHERE project=? AND adapter=? AND session=? AND epoch=? AND sequence=?')
         .get(event.projectId, adapter, sessionId, epoch, event.sequence);
@@ -120,7 +134,7 @@ export class Store {
         this.invalidate(event.projectId, adapter, sessionId);
       }
       this.db.prepare('INSERT INTO events(project,adapter,session,epoch,event_id,sequence,digest,json) VALUES(?,?,?,?,?,?,?,?)')
-        .run(event.projectId, adapter, sessionId, epoch, event.eventId, event.sequence, hash(event), JSON.stringify(event));
+        .run(event.projectId, adapter, sessionId, epoch, event.eventId, event.sequence, inputDigest, JSON.stringify(event));
       this.saveSession({ projectId: event.projectId, adapter, sessionId, epoch,
         highSequence: Math.max(current?.epoch === epoch ? current.highSequence : -1, event.sequence) });
       this.audit('event.ingested', { projectId: event.projectId, source: event.source, eventId: event.eventId });
@@ -265,8 +279,13 @@ export class Store {
     });
   }
   deliveries(projectId?: string): Delivery[] {
-    return (projectId ? this.db.prepare('SELECT json FROM deliveries WHERE project=?').all(projectId)
+    const rows = (projectId ? this.db.prepare('SELECT json FROM deliveries WHERE project=?').all(projectId)
       : this.db.prepare('SELECT json FROM deliveries').all()).map(r => decode<Delivery>(r)!);
+    return rows.map(d => {
+      if (d.status !== 'claimed' || !d.claimDeadline || Date.parse(d.claimDeadline) > this.now().getTime()) return d;
+      const expired: Delivery = { ...d, status: 'unknown', receipt: 'Delivery claim expired without a receipt; automatic resend disabled.' };
+      this.saveDelivery(expired); this.audit('delivery.claim_expired', { id: d.id }); return expired;
+    });
   }
   claimDelivery(deliveryId: string): Delivery {
     return this.tx(() => {
@@ -277,15 +296,16 @@ export class Store {
       if (this.project(c.projectId).revision !== c.contextRevision || this.session(c.projectId, c.adapter, c.sessionId).epoch !== c.epoch) {
         fail('stale_context', 'Delivery context changed.');
       }
-      const updated = { ...d, status: 'claimed' as const };
+      const updated = { ...d, status: 'claimed' as const, claimDeadline: new Date(this.now().getTime() + 60_000).toISOString() };
       this.saveDelivery(updated); this.audit('delivery.claimed', { id: d.id }); return updated;
     });
   }
-  receipt(deliveryId: string, status: 'delivered' | 'unknown', receipt: string): Delivery {
+  receipt(deliveryId: string, status: 'accepted' | 'delivered' | 'unknown', receipt: string): Delivery {
     return this.tx(() => {
       const d = this.deliveries().find(d => d.id === deliveryId) ?? fail('not_found', 'Delivery not found.', 404);
       if (d.status === status && d.receipt === receipt) return d;
-      if (!['claimed', 'unknown'].includes(d.status)) fail('invalid_receipt', 'Delivery was not claimed.');
+      if (d.status === 'delivered' && ['accepted', 'unknown'].includes(status)) return d;
+      if (!['claimed', 'unknown'].includes(d.status) && !(d.status === 'accepted' && status === 'delivered')) fail('invalid_receipt', 'Delivery was not claimed or cannot advance to that state.');
       const updated = { ...d, status, receipt };
       this.saveDelivery(updated); this.audit('delivery.receipt', updated); return updated;
     });

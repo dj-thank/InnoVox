@@ -1,8 +1,10 @@
 # Architecture direction
 
 Status: the first single-user preview implements the core, HTTP service, browser
-UI, selected-file collection and provider boundaries. Live provider and native
-device validation remain pending. See [operations](operations.md) for limits.
+UI, scoped conversation collection, an optional Codex delivery bridge and provider
+boundaries. An isolated native Codex transport test passes; working-agent use,
+live providers and native audio/screen validation remain pending.
+See [operations](operations.md) for limits.
 
 ## Boundaries
 
