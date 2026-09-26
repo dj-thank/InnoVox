@@ -74,8 +74,9 @@ Neither means a proprietary model's weights are available locally.
 
 Use the GPT Live public API and create a new API key dedicated to InnoVox.
 GPT Live remains the initial voice provider and Astra the reasoning head.
-This selects the integration and credential approach; it does not establish
-that a key has been created or that authenticated provider access works.
+The development environment now has a protected dedicated credential, with
+authenticated Astra structured output and GPT Live WebSocket audio output verified.
+This bounded provider result does not complete the intended conversational experience.
 
 ## Maintainer decisions still required
 
@@ -84,7 +85,6 @@ that a key has been created or that authenticated provider access works.
 These are deployment/ownership choices, not permission to put credentials or
 private conversations in the public repository.
 
-Credential provisioning and a bounded authenticated integration check remain
-execution work under the selected approach. The first browser voice transport is
-WebRTC with server-side HTTP session creation. Wire compatibility still requires
-a live check.
+The first browser voice transport is WebRTC with server-side HTTP session
+creation. That path still needs live validation independently of the successful
+WebSocket diagnostic. See [verification](verification.md) for the exact scope.

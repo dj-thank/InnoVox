@@ -2,6 +2,29 @@
 
 Date: 2026-09-26. Scope: the first single-user conversation/consultation preview.
 
+## Authenticated provider check (0.3)
+
+On 2026-09-26 at 04:46 UTC, `pnpm provider-check --live` passed against real
+OpenAI endpoints from Windows, using implementation commit
+`d40e2a07082f68e46cf2fb1a6c0730e77d24b1b9`, Node.js 24.19.0 and OpenAI SDK 7.23.0.
+
+- The project credential was persisted in an ignored server-side configuration
+  with access restricted to the local user and SYSTEM. No credential or private
+  conversation was included in public source, reports or provider test input.
+- `gpt-6-astra` returned a structured intervention for the synthetic project.
+  The service adapter parsed it and the store validated its evidence references.
+- `gpt-live-1` accepted the primary WebSocket session and returned 123,840 bytes
+  of PCM output with nonzero samples. The final `session.closed` event arrived,
+  with reported usage of 2 seconds and no probe error. A local WAV was retained.
+- The diagnostic used synthetic conversation data and paced silence, with no
+  microphone recording, model fallback or automatic reconnection.
+
+This establishes bounded authenticated reasoning and audio-output access with
+the tested credential. Browser WebRTC, speech recognition, spoken corrections,
+human listening and delivery to an actual working agent remain unverified.
+It does not establish access for every account or complete the original product
+acceptance scenario. See [provider checks](provider-check.md) to reproduce it.
+
 ## Scoped discovery and Codex delivery (0.3)
 
 - Windows x64, Node.js 24.19.0, pnpm 11.19.0: `pnpm check` passed all 50 tests
@@ -28,8 +51,8 @@ Date: 2026-09-26. Scope: the first single-user conversation/consultation preview
   upgrade test preserves existing answers, retains protocol acceptance over a
   restart and rejects databases from an unsupported newer version.
 - The explicit `provider-check` command is implemented. Its missing-key path
-  exits without a request. Authenticated Astra, GPT Live output and browser
-  WebRTC results remain unverified.
+  exits without a request. Authenticated Astra and GPT Live output were later
+  verified as recorded above; browser WebRTC acceptance remains open.
 
 Native transport/persistence is a bounded device result. Actual active model
 steering, ordinary Codex Desktop attachment, Claude delivery and human voice
@@ -104,8 +127,8 @@ passes; no independent-agent review is claimed.
 - The local Docker daemon was unavailable, so no local image-build result is claimed.
 - Connected-browser access to the preview was blocked by the client. Visual UI
   acceptance remains open; HTTP asset checks are not a substitute.
-- OpenAI credential provisioning, live model/account access, voice latency,
-  interruption, and human hearing checks remain open.
+- Bounded authenticated provider checks passed as recorded above. Browser voice,
+  real speech latency, interruption, and human hearing checks remain open.
 - No native macOS screen/accessibility component is shipped. The Codex write
   bridge's native proof is limited to the isolated Windows runtime described
   above. Mac OS permissions, native transport and audio are not device-verified.
