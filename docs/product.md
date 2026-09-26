@@ -76,7 +76,6 @@ that a key has been created or that authenticated provider access works.
 
 ## Maintainer decisions still required
 
-- Source-code license.
 - Initial hosting environment, service exposure, and operating budget.
 
 These are deployment/ownership choices, not permission to put credentials or

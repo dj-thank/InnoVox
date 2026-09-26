@@ -7,7 +7,7 @@ The order below expresses product intent, not a claim that these features exist.
 
 - [x] Public GitHub repository exists.
 - [x] Product direction and development instructions published.
-- [ ] Maintainer selects the source-code license.
+- [x] MIT License selected and published.
 - [x] GPT Live public API and a new InnoVox-specific key selected.
 - [ ] Secure key provisioning and authenticated provider access verified.
 - [ ] First implementation stack and its reasons recorded.

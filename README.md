@@ -49,5 +49,4 @@ Start with [the roadmap](docs/roadmap.md) and [repository instructions](AGENTS.m
 
 ## License
 
-The project license is awaiting the maintainer's selection. No open-source license
-is granted yet. A public repository alone is not a license grant.
+[MIT](LICENSE). Copyright 2026 InnoVox contributors.

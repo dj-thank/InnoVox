@@ -1,7 +1,7 @@
 # Contributing
 
-InnoVox is being developed in public. The first implementation and source-code
-license are being established; please check the README before relying on either.
+InnoVox is developed in public under the [MIT License](LICENSE). The first
+implementation is in progress; check the README for its current capabilities.
 
 ## Propose work
 
@@ -25,5 +25,5 @@ Explain the problem, resulting behavior, validation, and remaining limitations.
 Update documentation when the actual interface or architectural decision changes.
 Keep credentials, raw user histories, recordings, and local paths out of commits.
 
-External contributors should wait for the source-code license to be established
-before submitting code. No contributor license agreement is currently defined.
+Contributions are accepted under the project's MIT License. No contributor
+license agreement is currently defined.
