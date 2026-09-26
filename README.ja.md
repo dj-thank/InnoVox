@@ -32,10 +32,11 @@ pnpm init-local
 pnpm start
 ```
 
-`http://127.0.0.1:4317`を開き、`.innovox/access-token`のInnoVox用アクセスキーで
-接続します。「動作サンプルを開く」はOpenAI APIを呼びません。
+`http://127.0.0.1:4317`を開き、別のターミナルで`pnpm pair`を実行して、表示された
+一回限りの接続コードで接続します。「動作サンプルを開く」はOpenAI APIを呼びません。
 `pnpm check`で検証、`pnpm diagnose`で環境と設定の有無を確認できます。
 Macで必要な権限や未対応機能は[Mac向け手順](docs/platforms/macos.md)を参照してください。
+ログイン後の常駐起動、バックアップと復元は[日常運用の手順](docs/daily-operation.md)にまとめています。
 
 ## 目指す体験
 

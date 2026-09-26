@@ -26,6 +26,7 @@ Output: a source-bound consultation and a correctly routed, durable answer.
 - [x] Contract tests for duplicates, out-of-order input, stale replies, and restart.
 - [x] A browser inspection surface exposing the actual state.
 - [ ] Visual/device acceptance of the browser experience.
+- [x] Verified SQLite backup and restore rehearsal without replacing the live database.
 - [ ] Portable project export, replay tooling, and retention controls.
 
 Synthetic fixtures establish local behavior only. They do not prove Astra
@@ -75,6 +76,10 @@ M2 and M3 can be developed as independent adapters against the M1 contracts.
 - Verification from a second user's supported environment.
 
 ## M5 — Self-hosting on one computer
+
+One-use browser pairing, an owned Mac LaunchAgent and verified backup/restore
+commands are implemented. Actual installation/login/restart on the intended Mac
+and the full voice/agent acceptance remain open.
 
 - Reproducible installation and upgrade on the first supported OS.
 - Same domain contracts and acceptance suite as the hosted service.

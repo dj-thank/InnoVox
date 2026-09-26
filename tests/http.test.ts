@@ -19,6 +19,20 @@ test('HTTP slice: auth, explicit demo, persisted reply, rejection of cross-origi
     assert.ok((await page.text()).includes('InnoVox'));
     for (const path of ['/app.js', '/voice.js', '/style.css']) assert.equal((await fetch(base + path)).status, 200);
     assert.equal((await fetch(base + '/api/state')).status, 401);
+    assert.equal((await fetch(base + '/api/pairing', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status, 401);
+    const pairing = await (await fetch(base + '/api/pairing', { method: 'POST', headers, body: '{}' })).json();
+    assert.equal((await fetch(base + '/api/pairing/exchange', { method: 'POST', headers: { 'Content-Type': 'application/json', Origin: 'https://foreign.example' },
+      body: JSON.stringify({ code: pairing.code }) })).status, 403);
+    const paired = await (await fetch(base + '/api/pairing/exchange', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: pairing.code }) })).json();
+    const browserHeaders = { 'Content-Type': 'application/json', Authorization: `Bearer ${paired.accessToken}` };
+    assert.notEqual(paired.accessToken, token);
+    assert.equal((await fetch(base + '/api/state', { headers: browserHeaders })).status, 200);
+    assert.equal((await fetch(base + '/api/pairing', { method: 'POST', headers: browserHeaders, body: '{}' })).status, 403);
+    assert.equal((await fetch(base + '/api/pairing/exchange', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: pairing.code }) })).status, 401);
+    assert.equal((await fetch(base + '/api/logout', { method: 'POST', headers: browserHeaders, body: '{}' })).status, 200);
+    assert.equal((await fetch(base + '/api/state', { headers: browserHeaders })).status, 401);
     assert.equal((await fetch(base + '/api/demo', { method: 'POST', headers: { ...headers, Origin: 'https://foreign.example' }, body: '{}' })).status, 403);
     const p = await (await fetch(base + '/api/demo', { method: 'POST', headers, body: '{}' })).json();
     const state = await (await fetch(base + '/api/state?projectId=' + p.id, { headers })).json();

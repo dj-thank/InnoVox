@@ -28,6 +28,8 @@ jobs:
       - run: pnpm contracts
       - run: git diff --exit-code -- schemas
       - run: pnpm diagnose
+      - if: runner.os == 'macOS'
+        run: sh -n scripts/macos-check.sh
   container:
     runs-on: ubuntu-latest
     steps:

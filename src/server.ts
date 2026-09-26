@@ -10,6 +10,7 @@ import type { Store } from './store.js';
 import { OpenAIProvider } from './provider.js';
 import { seedDemo } from './demo.js';
 import { VoiceConversations } from './voice-conversations.js';
+import { BrowserPairing } from './pairing.js';
 
 export type ServerOptions = {
   store: Store; token: string; origin: string; root: string; provider: OpenAIProvider;
@@ -40,6 +41,7 @@ export function buildServer(options: ServerOptions) {
   const { store, provider } = options;
   const analyzer = new Analyzer(store, provider, options.maxAnalyses ?? 30);
   const voice = new VoiceConversations(store, provider, options.maxAnalyses ?? 30);
+  const pairing = new BrowserPairing();
   const deliveryView = (projectId?: string) => store.deliveries(projectId).map(d => ({ ...d,
     contextCurrent: d.status === 'queued' ? store.contextCurrent(store.consultation(d.consultationId)) : undefined }));
   const files: Record<string, [string, string]> = {
@@ -63,7 +65,19 @@ export function buildServer(options: ServerOptions) {
         res.end(await readFile(join(options.root, file))); return;
       }
       const bearer = req.headers.authorization?.startsWith('Bearer ') ? req.headers.authorization.slice(7) : '';
-      if (!bearer || !equal(bearer, options.token)) throw new DomainError('unauthorized', 'A valid access token is required.', 401);
+      if (req.method === 'POST' && url.pathname === '/api/pairing/exchange') {
+        const input = z.object({ code: z.string().max(16) }).strict().parse(await body(req));
+        send(res, 200, pairing.exchange(input.code)); return;
+      }
+      const owner = Boolean(bearer) && equal(bearer, options.token);
+      if (!bearer || (!owner && !pairing.valid(bearer))) throw new DomainError('unauthorized', 'A valid access token is required.', 401);
+      if (req.method === 'POST' && url.pathname === '/api/pairing') {
+        if (!owner) throw new DomainError('owner_required', 'Only the server owner can issue a pairing code.', 403);
+        await body(req); send(res, 201, pairing.create()); return;
+      }
+      if (req.method === 'POST' && url.pathname === '/api/logout') {
+        await body(req); pairing.revoke(bearer); send(res, 200, { disconnected: true }); return;
+      }
       if (req.method === 'GET' && url.pathname === '/api/state') {
         const projectId = url.searchParams.get('projectId') || undefined;
         if (projectId) store.project(id.parse(projectId));
