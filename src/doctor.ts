@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
+const [nodeMajor = 0, nodeMinor = 0] = process.versions.node.split('.').map(Number);
 let osVersion = 'not inspected';
 if (process.platform === 'darwin') {
   try { osVersion = execFileSync('/usr/bin/sw_vers', ['-productVersion'], { encoding: 'utf8', timeout: 3000 }).trim(); }
@@ -7,7 +8,7 @@ if (process.platform === 'darwin') {
 }
 console.log(JSON.stringify({
   platform: process.platform, architecture: process.arch, node: process.version, osVersion,
-  nodeSupported: process.versions.node.startsWith('24.'),
+  nodeSupported: nodeMajor === 24 && nodeMinor >= 19,
   configured: { applicationToken: Boolean(process.env.INNOVOX_ACCESS_TOKEN) || existsSync('.innovox/access-token'),
     openaiKey: Boolean(process.env.OPENAI_API_KEY?.trim()) },
   implemented: { conversationLogCollector: true, persistentConsultations: true, browserWebRtcAdapter: true,
