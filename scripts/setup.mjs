@@ -1,0 +1,11 @@
+import { mkdirSync, existsSync, writeFileSync, lstatSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
+import { resolve } from 'node:path';
+const directory = resolve('.innovox');
+if (existsSync(directory) && lstatSync(directory).isSymbolicLink()) throw new Error('Refusing a symlinked state directory.');
+mkdirSync(directory, { recursive: true, mode: 0o700 });
+const destination = resolve(directory, 'access-token');
+if (!existsSync(destination)) writeFileSync(destination, randomBytes(32).toString('base64url') + '\n', { mode: 0o600, flag: 'wx' });
+else if (lstatSync(destination).isSymbolicLink()) throw new Error('Refusing a symlinked token file.');
+console.log('Local InnoVox access token is in .innovox/access-token. It was not printed or replaced.');
+console.log('Use this token to connect the browser. This is not an OpenAI API key.');

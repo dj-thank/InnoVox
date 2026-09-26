@@ -10,24 +10,29 @@ The order below expresses product intent, not a claim that these features exist.
 - [x] MIT License selected and published.
 - [x] GPT Live public API and a new InnoVox-specific key selected.
 - [ ] Secure key provisioning and authenticated provider access verified.
-- [ ] First implementation stack and its reasons recorded.
+- [x] First implementation stack and its reasons recorded in ADR 0001.
 
 ## M1 — A reliable conversation-to-consultation slice
 
 Input: synthetic conversation events and explicit project conditions.
 Output: a source-bound consultation and a correctly routed, durable answer.
 
-- Versioned events and a replayable journal.
-- Project conditions with source, scope, reason, and revision.
-- Consultation lifecycle, corrections, expiration, and reply binding.
-- Idempotent ingestion and delivery intent; visible unknown outcomes.
-- Contract tests for duplicates, out-of-order input, stale replies, and restart.
-- A small inspection surface exposing the actual state.
+- [x] Versioned event storage and a cursor-based audit journal.
+- [x] Explicit project conditions with reason and revision.
+- [x] Consultation lifecycle, editable replies, expiration, and reply binding.
+- [x] Idempotent ingestion and delivery intent; visible unknown outcomes.
+- [x] Contract tests for duplicates, out-of-order input, stale replies, and restart.
+- [x] A browser inspection surface exposing the actual state.
+- [ ] Visual/device acceptance of the browser experience.
+- [ ] Portable project export, replay tooling, and retention controls.
 
 Synthetic fixtures establish local behavior only. They do not prove Astra
 reasoning, GPT Live voice, or a supported application's integration.
 
 ## M2 — GPT Live + Astra, real end-to-end
+
+The WebRTC and Astra HTTP adapters are implemented and contract-tested with
+synthetic responses. All live-provider and human acceptance items below remain open.
 
 - Supported, authenticated GPT Live connection.
 - Astra receives only the relevant conversation/project context.
@@ -37,6 +42,9 @@ reasoning, GPT Live voice, or a supported application's integration.
 - Provider failure and reconnection preserve task state without duplicate effects.
 
 ## M3 — One real session connector
+
+Selected-file message-log parsers and a collector are implemented. Synthetic
+collector-to-server checks do not close the real-app acceptance items below.
 
 - Observe an existing supported Codex or Claude Code session.
 - Document the tested app/protocol versions and precise visibility limits.

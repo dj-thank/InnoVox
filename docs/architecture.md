@@ -1,6 +1,8 @@
 # Architecture direction
 
-Status: design baseline; implementation and integration validation pending.
+Status: the first single-user preview implements the core, HTTP service, browser
+UI, selected-file collection and provider boundaries. Live provider and native
+device validation remain pending. See [operations](operations.md) for limits.
 
 ## Boundaries
 
@@ -29,7 +31,7 @@ to InnoVox. GPT Live provides the voice experience and Astra supplies reasoning
 through their adapter boundaries. Keep the long-lived provider key on the server
 or in a protected local configuration, outside browser bundles and public source.
 
-The exact wire transport and SDK versions remain implementation decisions.
+The first browser voice adapter uses WebRTC and server-side HTTP session creation.
 Credential creation and authenticated provider access are not yet verified.
 
 ## Cloud-first capture
@@ -116,15 +118,10 @@ behavior rather than a single "MCP supported" flag.
 
 ## Runtime and language decisions
 
-The earlier desktop-oriented Rust + TypeScript split is a candidate, not a fixed
-constraint. Cloud-first delivery changes which boundaries must be implemented
-first. Choose a small working cloud slice before adding OS-specific components.
-
-TypeScript is a candidate for SDK integrations and web delivery; Rust is a
-candidate for the long-lived native companion, capture, and local state handling.
-Keep the contract language-neutral. Do not add a second runtime solely to make
-model inference appear faster. Record an ADR before fixing the implementation
-stack.
+The first service uses TypeScript, Node.js 24 and native SQLite. The same service
+runs locally or on a single cloud host. [ADR 0001](decisions/0001-cloud-first-runtime.md)
+records the decision and limits. Rust and a Swift macOS companion remain native
+adapter candidates; neither is required for the first cloud service.
 
 Local storage and hosted storage may differ behind the same transactional domain
 operations. Avoid a shared writable database file across machines. Production

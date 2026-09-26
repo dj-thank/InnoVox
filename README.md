@@ -7,13 +7,34 @@ and offers useful context before an agent needs to ask. When human judgment is
 needed, it makes that conversation available through voice and returns the answer
 to the right task.
 
-[日本語](README.ja.md) · [Product](docs/product.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [Contributing](CONTRIBUTING.md)
+[日本語](README.ja.md) · [Run the preview](docs/operations.md) · [Mac guide](docs/platforms/macos.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [Contributing](CONTRIBUTING.md)
 
 ## Status
 
-This repository is at the project-foundation stage. It does not yet contain a
-working hosted service, a live GPT Live integration, or a desktop connector.
-Public source availability is separate from a publicly available service.
+An initial **single-user preview** implements persistent conversation events,
+project conditions, source-bound consultations, answers and a delivery queue.
+A browser UI and selected-file Codex/Claude Code collectors are included.
+GPT Live WebRTC and Astra adapters have contract tests; real provider access and
+human voice acceptance remain unverified. Native screen capture and automatic
+input into existing agent sessions are not implemented. No public service is
+deployed.
+
+## Run locally
+
+Requires Node.js 24.19+ (24.x) and pnpm 11.19.0.
+
+```sh
+pnpm install --frozen-lockfile
+pnpm build
+pnpm init-local
+pnpm start
+```
+
+Open `http://127.0.0.1:4317` and connect with the InnoVox access token generated
+in `.innovox/access-token`. The explicit synthetic sample works without OpenAI
+credentials. `pnpm check` runs the tests and `pnpm diagnose` reports environment
+capabilities. See [operations](docs/operations.md) for provider setup boundaries,
+collection, cloud deployment preparation, and current limits.
 
 ## What we are building
 
@@ -26,9 +47,9 @@ Public source availability is separate from a publicly available service.
 
 The initial direction is **cloud first, GPT Live for the voice experience, and
 Astra for reasoning**. The selected integration approach is the **GPT Live public
-API with a new InnoVox-specific API key**. Key provisioning, authenticated provider
-access, the exact wire transport, and production hosting remain to be verified
-or selected before a live integration is claimed.
+API with a new InnoVox-specific API key**. The implemented browser transport is
+WebRTC. Key provisioning, authenticated provider access, and production hosting
+remain to be verified or selected before a live integration is claimed.
 
 The long-term direction is the same product on a hosted service or one capable
 personal computer. Shared behavior, exportable data, documented protocols, and
