@@ -3,8 +3,9 @@
 This is a **single-user preview**, not a multi-tenant public service. It implements
 durable conversation observations, project conditions, source-bound questions,
 answers, and a delivery queue. GPT Live and Astra adapters exist but need live
-account and human validation. Automatic input into desktop agent sessions and
-native screen capture are not implemented.
+account and human validation. An optional Codex relay is described in
+[connectors](connectors.md); desktop-wide attachment, Claude delivery and native
+screen capture remain open.
 
 ## Local setup
 
@@ -32,6 +33,9 @@ Provider credentials belong in a secure server environment or an ignored
 Restart the server after changing environment configuration. `doctor` reports
 presence, not key validity or account access. The initial models are fixed to
 `gpt-6-astra` and `gpt-live-1`; no model fallback is performed.
+Use the explicit [provider check](provider-check.md) for a bounded authenticated
+synthetic request and optional generated-audio check. Configuration presence alone
+does not establish either provider result.
 
 For Mac, read [the feature and permission guide](platforms/macos.md).
 
@@ -56,8 +60,10 @@ For Mac, read [the feature and permission guide](platforms/macos.md).
 - The current UI still starts voice per question. Persistent voice presence and
   automatic announcement of newly detected questions remain unimplemented.
 - Answers are queued for their original session. Copying an answer does not mark
-  it delivered. An adapter must claim a delivery and supply a receipt; a crash
-  while claimed changes the outcome to unknown and disables automatic retries.
+  it delivered. The optional Codex bridge distinguishes protocol acceptance from
+  verified source persistence. Neither proves model use. A lost response, restart
+  while claimed, or one-minute abandoned claim changes the outcome to unknown
+  and disables automatic retries.
 - Questions expire after 15 minutes. Source-context changes block old answers
   and deliveries until reconciliation; a fresh analysis can retire an obsolete
   question. Unchanged questions skip repeated model calls. Updated project
@@ -67,7 +73,7 @@ For Mac, read [the feature and permission guide](platforms/macos.md).
 
 ## Capture a selected conversation
 
-The collector reads only one explicitly selected JSONL file. It sends supported
+The `capture` command reads one explicitly selected JSONL file. It sends supported
 user/assistant text blocks to the selected InnoVox project. This can include
 private conversation content: select the intended source and destination.
 
@@ -95,6 +101,10 @@ correctness over fast startup for very large files. Rotation/truncation is an
 explicit stop; choose the new source and an increased `--epoch` to start a new
 generation. In-place rewrites without truncation need further validation.
 
+For multiple sessions, use the explicitly scoped `discover --collect --watch`
+command described in [connectors](connectors.md). The same guide documents the
+optional Codex answer-delivery bridge and its native verification limits.
+
 ## API contract
 
 All `/api/*` routes require `Authorization: Bearer <INNOVOX_ACCESS_TOKEN>`.
@@ -109,6 +119,7 @@ Browser requests must use the configured origin. Payloads are JSON, bounded to
 - `GET /api/consultations/:id`: authoritative current question state.
 - `POST /api/consultations/:id/answer`: question version + stable answer id + text/channel.
 - `POST /api/consultations/:id/cancel`: cancel a pending question.
+- `GET /api/deliveries?projectId=...&adapter=...&sessionId=...`: scoped outbox view.
 - `POST /api/deliveries/:id/claim`, `POST /api/deliveries/:id/receipt`: delivery lifecycle.
 - `POST /api/live/session`: pending question/version and browser SDP offer.
 - `POST /api/consultations/:id/voice/interpret`: stable turn id, question version,
@@ -120,8 +131,9 @@ Browser requests must use the configured origin. Payloads are JSON, bounded to
 - `POST /api/demo`: explicit synthetic sample.
 
 Unknown domain event kinds are preserved. Unsupported schema versions are
-rejected. Delivery APIs are for trusted adapters under the single-user token;
-they are not evidence that a particular third-party application adapter exists.
+rejected. Delivery APIs are for trusted adapters under the single-user token.
+The currently shipped write adapter is the optional Codex App Server bridge;
+Claude delivery is not implemented.
 
 ## Cloud deployment preparation
 
@@ -148,11 +160,12 @@ The CI matrix runs on Linux, Windows, and macOS; a container job builds the
 Dockerfile. Mocked provider checks do not establish live provider access or
 human acceptance. Actual browser/device evidence is tracked separately.
 
-## Upgrade from 0.1
+## Upgrade from an earlier preview
 
 Stop the single service and back up its state before upgrading. Version 0.2 adds
-voice conversation tables and advances SQLite user_version to 2; the older binary
-will reject the newer database. Existing event/answer rows are retained. Legacy
+voice conversation tables. Version 0.3 adds protocol acceptance and verified echo
+semantics and advances SQLite user_version to 3; older binaries reject the newer
+database. Existing event/answer rows are retained. Legacy
 questions without a context fingerprint require re-analysis before accepting or
 delivering an answer. The product-level acceptance contract is in
 [original requirements](requirements.md).

@@ -1,10 +1,12 @@
 {
   "name": "innovox",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "license": "MIT",
-  "engines": { "node": ">=24.19.0 <25" },
+  "engines": {
+    "node": ">=24.19.0 <25"
+  },
   "packageManager": "pnpm@11.19.0",
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -15,8 +17,19 @@
     "test": "pnpm build && node --test dist/tests/*.test.js",
     "start": "node --env-file-if-exists=.env.local dist/src/main.js",
     "capture": "node --env-file-if-exists=.env.local dist/src/capture.js",
+    "discover": "node --env-file-if-exists=.env.local dist/src/discover.js",
+    "relay-codex": "node --env-file-if-exists=.env.local dist/src/delivery-bridge.js",
+    "provider-check": "node --env-file-if-exists=.env.local dist/src/provider-check.js",
     "check": "pnpm typecheck && pnpm test"
   },
-  "dependencies": { "zod": "4.6.5" },
-  "devDependencies": { "@types/node": "24.19.0", "typescript": "7.0.2" }
+  "dependencies": {
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.0",
+    "@types/ws": "8.18.1",
+    "openai": "7.23.0",
+    "typescript": "7.0.2",
+    "ws": "8.21.3"
+  }
 }

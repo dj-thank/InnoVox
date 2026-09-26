@@ -9,7 +9,7 @@ to the right task.
 
 [日本語](README.ja.md) · [Run the preview](docs/operations.md) · [Mac guide](docs/platforms/macos.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [Contributing](CONTRIBUTING.md)
 
-**The original end-to-end product is not complete.** See [requirements and acceptance](docs/requirements.md); live voice, real agent delivery, discovery and hosted-service acceptance remain open.
+**The original end-to-end product is not complete.** See [requirements and acceptance](docs/requirements.md); live voice, ordinary desktop attachment, working-agent use and hosted-service acceptance remain open.
 
 ## Status
 
@@ -17,9 +17,10 @@ An initial **single-user preview** implements persistent conversation events,
 project conditions, source-bound consultations, answers and a delivery queue.
 A browser UI and selected-file Codex/Claude Code collectors are included.
 GPT Live WebRTC and Astra adapters have contract tests; real provider access and
-human voice acceptance remain unverified. Native screen capture and automatic
-input into existing agent sessions are not implemented. No public service is
-deployed.
+human voice acceptance remain unverified. Scoped session discovery and an optional
+Codex App Server delivery bridge are included; see [connectors](docs/connectors.md).
+Native screen capture, Claude delivery, and universal desktop attachment remain
+unimplemented or unverified. No public service is deployed.
 
 ## Run locally
 

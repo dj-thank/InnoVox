@@ -4,6 +4,7 @@ import { mkdirSync, mkdtempSync, rmSync } from 'node:fs';
 import { join, resolve, sep } from 'node:path';
 import { Store } from '../src/store.js';
 import { DomainError } from '../src/contracts.js';
+import { DatabaseSync } from 'node:sqlite';
 
 function setup(path = ':memory:', clock?: () => Date) {
   const store = new Store(path, clock);
@@ -114,4 +115,36 @@ test('provider admission limits survive the store and expire by time', () => {
     assert.throws(() => store.consumeBudget('analysis', 1), hasCode('rate_limit'));
     now = new Date(now.getTime() + 3600_001); store.consumeBudget('analysis', 1);
   } finally { store.close(); }
+});
+test('an orphaned delivery claim becomes unknown without restarting or resending', () => {
+  let now = new Date('2026-09-26T00:00:00Z');
+  const { store, proposal, snapshot } = setup(':memory:', () => now);
+  try {
+    const q = store.propose(snapshot(), proposal);
+    const d = store.answer(q.id, { answerId: 'timeout', text: 'Yes', channel: 'typed', expectedVersion: 1 }).delivery;
+    store.claimDelivery(d.id); now = new Date(now.getTime() + 61_000);
+    assert.equal(store.deliveries()[0]?.status, 'unknown');
+    assert.throws(() => store.claimDelivery(d.id), hasCode('delivery_not_queued'));
+  } finally { store.close(); }
+});
+
+test('delivery-state upgrade preserves existing answers and rejects a newer database', () => {
+  const parent = resolve('.innovox'); mkdirSync(parent, { recursive: true });
+  const directory = mkdtempSync(join(parent, 'upgrade-test-')), path = join(directory, 'state.sqlite');
+  const { store, proposal, snapshot } = setup(path);
+  const question = store.propose(snapshot(), proposal);
+  const delivery = store.answer(question.id, { answerId: 'legacy', text: 'Keep offline.', channel: 'typed', expectedVersion: 1 }).delivery;
+  store.db.exec('PRAGMA user_version=2'); store.close();
+  const upgraded = new Store(path);
+  try {
+    assert.equal(upgraded.consultation(question.id).answer?.text, 'Keep offline.');
+    upgraded.claimDelivery(delivery.id);
+    upgraded.receipt(delivery.id, 'accepted', 'Synthetic protocol receipt');
+    assert.equal(upgraded.db.prepare('PRAGMA user_version').get()?.user_version, 3);
+  } finally { upgraded.close(); }
+  const restarted = new Store(path);
+  try { assert.equal(restarted.deliveries()[0]?.status, 'accepted'); } finally { restarted.close(); }
+  const future = new DatabaseSync(path); future.exec('PRAGMA user_version=4'); future.close();
+  try { assert.throws(() => new Store(path), hasCode('schema_version')); }
+  finally { assert.ok(resolve(directory).startsWith(parent + sep)); rmSync(directory, { recursive: true }); }
 });

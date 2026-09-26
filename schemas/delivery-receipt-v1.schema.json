@@ -5,6 +5,7 @@
     "status": {
       "type": "string",
       "enum": [
+        "accepted",
         "delivered",
         "unknown"
       ]
