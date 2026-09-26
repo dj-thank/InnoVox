@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>InnoVox — 作業の文脈を、会話につなぐ</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header><a class="brand" href="/">InnoVox<span>EARLY PREVIEW</span></a><p>作業の文脈を、会話につなぐ。</p><button id="logout" hidden>接続を解除</button></header>
+  <main>
+    <section id="login" class="login">
+      <p class="eyebrow">YOUR CONTEXT, CONNECTED</p>
+      <h1>大切な前提を、<br>必要なときに。</h1>
+      <p class="intro">エージェントとの会話とプロジェクトの意図をつなぎ、<br>見落としそうな前提を一緒に確かめるワークスペース。</p>
+      <form id="login-form"><label for="token">InnoVoxアクセスキー</label><div class="row"><input id="token" type="password" autocomplete="off" required minlength="32" placeholder="サーバーに設定したアクセスキー"><button class="primary">接続する</button></div></form>
+      <p class="note">OpenAIのAPIキーはここに入力しません。会話データは接続先のサーバーに保存されます。</p>
+    </section>
+    <section id="workspace" hidden>
+      <div class="workspace-head"><div><p class="eyebrow">WORKSPACE</p><h1>文脈と、次のひとこと。</h1></div><span id="provider-status" class="badge"></span></div>
+      <div class="toolbar"><label for="project">プロジェクト</label><select id="project"></select><button id="new-project">新規作成</button><button id="sample">動作サンプルを開く</button></div>
+      <section id="project-editor" class="panel" hidden>
+        <h2>プロジェクトが大切にすること</h2>
+        <form id="project-form">
+          <label for="project-name">プロジェクト名</label><input id="project-name" required maxlength="100">
+          <label for="conditions">保持したい条件と理由（1行に「条件 | 理由」）</label>
+          <textarea id="conditions" rows="4" required placeholder="オフラインでも保存する | 移動中に内容を失わないため"></textarea>
+          <label class="check"><input id="auto-analyze" type="checkbox">会話の変更時にAstraで自動分析する</label>
+          <p class="note">有効にすると、このプロジェクトの直近の会話と保持条件をOpenAIへ送信します。API利用料が発生します。</p>
+          <div class="row"><button class="primary">保存する</button><button type="button" id="cancel-edit">閉じる</button></div>
+        </form>
+      </section>
+      <div class="columns">
+        <aside><section><div class="section-head"><h2>保持する前提</h2><button id="edit-project" class="link">編集</button></div><div id="condition-list"></div></section>
+          <section><h2>つながっている会話</h2><div id="session-list"></div></section>
+          <section class="capture-note"><h2>ローカルの会話をつなぐ</h2><p>選択した会話ログを、コレクターから取り込めます。画面の自動取得・自動入力はまだありません。</p><details><summary>取り込み先の識別子</summary><code id="project-id"></code></details></section>
+        </aside>
+        <div class="content"><section><div class="section-head"><h2>いま確かめたいこと</h2><span id="question-count" class="muted"></span></div><div id="questions"></div></section>
+          <section id="voice-panel" class="panel" hidden><h2>音声で相談中</h2><p id="voice-question"></p><p id="voice-status" aria-live="polite"></p><audio id="voice-audio" controls autoplay></audio><label for="voice-draft">返答の下書き</label><textarea id="voice-draft" rows="3" maxlength="4000"></textarea><p class="note">発話の途中で確定しません。訂正を含めて読み直してから、下書きを回答欄に戻せます。</p><div class="row"><button id="voice-use">下書きを回答欄に戻す</button><button id="voice-stop">音声を終了</button></div></section>
+          <section><h2>保存した回答</h2><div id="deliveries"></div></section>
+          <section><div class="section-head"><h2>最近の会話</h2><button id="add-message" class="link">会話を手動追加</button></div><div id="messages"></div></section>
+          <form id="message-form" class="panel" hidden><label for="message-role">発言者</label><select id="message-role"><option value="assistant">エージェント</option><option value="user">人間</option></select><label for="message-text">発言</label><textarea id="message-text" required maxlength="16000" rows="4"></textarea><div class="row"><button class="primary">会話に追加</button><button type="button" id="cancel-message">閉じる</button></div></form>
+        </div>
+      </div>
+    </section>
+    <p id="notice" class="notice" role="status" aria-live="polite"></p>
+  </main>
+  <footer>InnoVox · MIT · 初期プレビュー <span>会話の保存と送信先への反映は、別々に確認します。</span></footer>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

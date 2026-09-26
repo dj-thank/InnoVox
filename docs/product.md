@@ -82,5 +82,6 @@ These are deployment/ownership choices, not permission to put credentials or
 private conversations in the public repository.
 
 Credential provisioning and a bounded authenticated integration check remain
-execution work under the selected approach. The exact wire transport and SDK
-versions must be chosen and validated during implementation.
+execution work under the selected approach. The first browser voice transport is
+WebRTC with server-side HTTP session creation. Wire compatibility still requires
+a live check.

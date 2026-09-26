@@ -6,13 +6,33 @@
 照らし合わせて、今伝えると役立つ情報を先回りして提示します。
 人間の判断が必要なら音声で相談し、答えを正しい作業へ戻します。
 
-[English](README.md) · [プロダクト方針](docs/product.md) · [設計](docs/architecture.md) · [開発段階](docs/roadmap.md)
+[English](README.md) · [起動と運用](docs/operations.md) · [Macの機能・設定](docs/platforms/macos.md) · [設計](docs/architecture.md) · [開発段階](docs/roadmap.md)
 
 ## 現在の状態
 
-プロジェクトの基盤を整備している段階です。稼働する公開サービス、
-GPT Liveとの実接続、デスクトップのセッション連携はまだありません。
-リポジトリの公開と、サービスを誰もが利用できる状態は区別します。
+単一ユーザー向けの初期プレビューを実装しています。会話の取り込み・保持条件・
+確認・回答を永続化し、ブラウザで操作できます。Codex/Claude Codeの選択した
+会話ログを読み取るコレクターも含みます。
+
+GPT LiveのWebRTC接続とAstraの判断を行う接続部には契約テストがありますが、
+実API接続と人間による音声確認は未完了です。画面の自動取得・既存セッションへの
+自動入力は未実装で、公開サービスもまだ稼働していません。
+
+## 起動
+
+Node.js 24.19以上の24系とpnpm 11.19を用意します。
+
+```sh
+pnpm install --frozen-lockfile
+pnpm build
+pnpm init-local
+pnpm start
+```
+
+`http://127.0.0.1:4317`を開き、`.innovox/access-token`のInnoVox用アクセスキーで
+接続します。「動作サンプルを開く」はOpenAI APIを呼びません。
+`pnpm check`で検証、`pnpm diagnose`で環境と設定の有無を確認できます。
+Macで必要な権限や未対応機能は[Mac向け手順](docs/platforms/macos.md)を参照してください。
 
 ## 目指す体験
 
