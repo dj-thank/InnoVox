@@ -1,8 +1,11 @@
 name: Contract and runtime checks
 on:
   push:
-    branches: [main, 'feat/**']
+    branches: [main]
   pull_request:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
