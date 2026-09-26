@@ -59,6 +59,13 @@ async function main() {
   const rpc = new StdioCodexRpc(child.stdout, child.stdin);
   let stopping = false;
   child.on('error', () => { stopping = true; rpc.close(); });
+  child.once('exit', () => {
+    if (!stopping) {
+      process.exitCode = 1;
+      console.error('Codex connection ended. Inspect the broker state before restarting the bridge.');
+    }
+    stopping = true; rpc.close();
+  });
   process.once('SIGINT', () => { stopping = true; }); process.once('SIGTERM', () => { stopping = true; });
   try {
     await initializeCodex(rpc);
@@ -74,6 +81,7 @@ async function main() {
       await delay(2000);
     } while (!stopping);
   } finally {
+    stopping = true;
     rpc.close();
     if (child.exitCode === null) await Promise.race([new Promise(resolveExit => child.once('exit', resolveExit)), delay(3000)]);
     if (child.exitCode === null) child.kill(); // this exact owned proxy, never the target daemon
