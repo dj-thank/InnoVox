@@ -23,6 +23,20 @@ export const proposalSchema = z.object({
   conditionIds: z.array(id).min(1).max(10),
 }).strict();
 export const reasoningSchema = z.object({ proposal: proposalSchema.nullable() }).strict();
+export const voiceDecisionSchema = z.object({
+  intent: z.enum(['clarify', 'draft', 'confirm']), reply: text(1600), answerText: text(4000).nullable(),
+}).strict();
+export const voiceTurnSchema = z.object({
+  turnId: id, expectedVersion: z.number().int().positive(), transcript: text(8000),
+}).strict();
+export type VoiceTurn = z.infer<typeof voiceTurnSchema>;
+export type VoiceDecision = z.infer<typeof voiceDecisionSchema>;
+export type VoiceResolution = {
+  turnId: string; intent: VoiceDecision['intent']; reply: string; answerText: string | null;
+  resolutionId: string | null; expectedVersion: number; expiresAt: string;
+};
+export type VoiceState = { candidate: string | null; expectedVersion: number;
+  candidatePresented: boolean; contextFingerprint: string; latest: VoiceResolution };
 export const answerSchema = z.object({
   answerId: id, text: text(4000), expectedVersion: z.number().int().positive(),
   channel: z.enum(['typed', 'voice']),
@@ -43,17 +57,23 @@ export type Session = {
   projectId: string; adapter: string; sessionId: string; epoch: number; highSequence: number;
 };
 export type Snapshot = {
-  project: Project; session: Session; events: ConversationEvent[]; fingerprint: string;
+  project: Project; session: Session; events: ConversationEvent[];
+  relatedEvents: ConversationEvent[]; fingerprint: string;
 };
 export type Consultation = Proposal & {
   id: string; projectId: string; adapter: string; sessionId: string; epoch: number;
   contextRevision: number; fingerprint: string; status: 'pending' | 'answered' | 'cancelled' | 'superseded' | 'expired';
   version: number; createdAt: string; expiresAt: string; answer: Answer | null;
+  contextFingerprint?: string;
+  contextCurrent?: boolean;
 };
 export type Delivery = {
   id: string; consultationId: string; projectId: string; adapter: string; sessionId: string;
   epoch: number; text: string; status: 'queued' | 'claimed' | 'delivered' | 'unknown' | 'cancelled';
   receipt: string | null;
+  answerText?: string;
+  question?: string;
+  evidenceEventIds?: string[];
 };
 
 export class DomainError extends Error {

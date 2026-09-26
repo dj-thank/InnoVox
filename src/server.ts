@@ -9,6 +9,7 @@ import { DomainError, deliveryReceiptSchema, id } from './contracts.js';
 import type { Store } from './store.js';
 import { OpenAIProvider } from './provider.js';
 import { seedDemo } from './demo.js';
+import { VoiceConversations } from './voice-conversations.js';
 
 export type ServerOptions = {
   store: Store; token: string; origin: string; root: string; provider: OpenAIProvider;
@@ -38,6 +39,7 @@ export function buildServer(options: ServerOptions) {
   const origin = new URL(options.origin).origin;
   const { store, provider } = options;
   const analyzer = new Analyzer(store, provider, options.maxAnalyses ?? 30);
+  const voice = new VoiceConversations(store, provider, options.maxAnalyses ?? 30);
   const files: Record<string, [string, string]> = {
     '/': ['web/index.html', 'text/html'], '/app.js': ['dist/web/app.js', 'text/javascript'],
     '/voice.js': ['dist/web/voice.js', 'text/javascript'], '/style.css': ['web/style.css', 'text/css'],
@@ -64,7 +66,7 @@ export function buildServer(options: ServerOptions) {
         const projectId = url.searchParams.get('projectId') || undefined;
         if (projectId) store.project(id.parse(projectId));
         const sessions = store.sessions(projectId);
-        send(res, 200, { projects: store.projects(), sessions, consultations: store.consultations(projectId),
+        send(res, 200, { projects: store.projects(), sessions, consultations: store.consultations(projectId).map(c => ({ ...c, contextCurrent: store.contextCurrent(c) })),
           deliveries: store.deliveries(projectId), analysis: analyzer.status(),
           messages: sessions.flatMap(s => store.events(s.projectId, s.adapter, s.sessionId, s.epoch, 20)),
           capabilities: { providerConfigured: provider.available, reasoningModel: 'gpt-6-astra', voiceModel: 'gpt-live-1',
@@ -84,7 +86,11 @@ export function buildServer(options: ServerOptions) {
       if (req.method === 'POST' && url.pathname === '/api/events') {
         const result = store.ingest(await body(req));
         if (!result.duplicate && result.event.kind === 'message' && result.event.origin !== 'innovox') {
-          analyzer.schedule(store.session(result.event.projectId, result.event.source.adapter, result.event.source.sessionId));
+          const pending = store.consultations(result.event.projectId).filter(q => q.status === 'pending');
+          for (const session of store.sessions(result.event.projectId)) {
+            if ((session.adapter === result.event.source.adapter && session.sessionId === result.event.source.sessionId) ||
+                pending.some(q => q.adapter === session.adapter && q.sessionId === session.sessionId)) analyzer.schedule(session);
+          }
         }
         send(res, result.duplicate ? 200 : 201, result); return;
       }
@@ -92,11 +98,27 @@ export function buildServer(options: ServerOptions) {
         const input = sessionInput.parse(await body(req)); send(res, 200, { consultation: await analyzer.run(input) }); return;
       }
       const questionRead = /^\/api\/consultations\/([^/]+)$/.exec(url.pathname);
-      if (req.method === 'GET' && questionRead) { send(res, 200, store.consultation(id.parse(questionRead[1]))); return; }
+      if (req.method === 'GET' && questionRead) { const q = store.consultation(id.parse(questionRead[1]));
+        send(res, 200, { ...q, contextCurrent: store.contextCurrent(q) }); return; }
       const questionMatch = /^\/api\/consultations\/([^/]+)\/(answer|cancel)$/.exec(url.pathname);
       if (req.method === 'POST' && questionMatch) {
         const qid = id.parse(questionMatch[1]);
         send(res, 200, questionMatch[2] === 'answer' ? store.answer(qid, await body(req)) : store.cancel(qid)); return;
+      }
+      const voiceMatch = /^\/api\/consultations\/([^/]+)\/voice\/(interpret|commit|readback)$/.exec(url.pathname);
+      if (req.method === 'POST' && voiceMatch) {
+        const qid = id.parse(voiceMatch[1]);
+        if (voiceMatch[2] === 'interpret') send(res, 200, await voice.interpret(qid, await body(req)));
+        else if (voiceMatch[2] === 'readback') {
+          const input = z.object({ turnId: id }).strict().parse(await body(req));
+          store.markVoiceReadback(qid, input.turnId); send(res, 200, { contextAdded: true });
+        }
+        else {
+          const input = z.object({ resolutionId: id }).strict().parse(await body(req));
+          const result = store.commitVoiceAnswer(qid, input.resolutionId);
+          send(res, 200, { ...result, reply: '回答を保存しました。元の作業への送信はまだ確認していません。' });
+        }
+        return;
       }
       const deliveryMatch = /^\/api\/deliveries\/([^/]+)\/(claim|receipt)$/.exec(url.pathname);
       if (req.method === 'POST' && deliveryMatch) {
@@ -110,8 +132,10 @@ export function buildServer(options: ServerOptions) {
           sdp: z.string().min(1).max(100_000) }).strict().parse(await body(req));
         const q = store.consultation(input.consultationId);
         if (q.status !== 'pending' || q.version !== input.expectedVersion) throw new DomainError('stale_question', 'Question is no longer pending.');
+        if (!store.contextCurrent(q)) throw new DomainError('stale_context', 'Re-analyze the question before opening voice.');
         if (!provider.available) throw new DomainError('provider_not_configured', 'OpenAI credentials are not configured.', 503);
         store.consumeBudget('live', options.maxLive ?? 6);
+        store.resetVoiceDialogue(q.id);
         send(res, 201, await provider.createLive(input.sdp, q)); return;
       }
       throw new DomainError('not_found', 'Route not found.', 404);

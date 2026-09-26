@@ -1,5 +1,8 @@
 # Product direction
 
+The [original requirements and acceptance scenario](requirements.md) define
+completion. Milestone slices are implementation steps, not reduced user requirements.
+
 ## Purpose
 
 Help a person keep coding agents aligned with the project's intent while reducing

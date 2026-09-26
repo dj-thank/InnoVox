@@ -8,6 +8,8 @@
 
 [English](README.md) · [起動と運用](docs/operations.md) · [Macの機能・設定](docs/platforms/macos.md) · [設計](docs/architecture.md) · [開発段階](docs/roadmap.md)
 
+**元の要件を満たす一連の動作は、まだ完成していません。** [要件と受入条件](docs/requirements.md)で、実装済みの部分と実音声・実セッションへの配送・自動発見・クラウド公開の不足を管理しています。
+
 ## 現在の状態
 
 単一ユーザー向けの初期プレビューを実装しています。会話の取り込み・保持条件・
