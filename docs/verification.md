@@ -24,8 +24,13 @@ Date: 2026-09-26. Scope: the first single-user conversation/consultation preview
 
 ## Remaining evidence
 
-- GitHub Actions results are authoritative for Linux/macOS/Windows and Docker
-  checks. Check the exact commit's run; adding a workflow is not a passing run.
+- [GitHub Actions run 36207584233](https://github.com/dj-thank/InnoVox/actions/runs/36207584233)
+  passed all four jobs on implementation commit `28a0e3c46153e1554e63382eacc7fe391578b19c`:
+  Windows, Linux, macOS, and Docker build. The pull-request run also passed.
+- The Mac job used `macos-26-arm64`, reported `darwin`/`arm64`, and passed all 22
+  tests on Node.js 24.19.0. This confirms the tested Apple Silicon runtime path;
+  it does not establish Intel Mac compatibility or microphone/screen behavior.
+- Check the exact commit's run when making future compatibility claims.
 - The local Docker daemon was unavailable, so no local image-build result is claimed.
 - Connected-browser access to the preview was blocked by the client. Visual UI
   acceptance remains open; HTTP asset checks are not a substitute.
