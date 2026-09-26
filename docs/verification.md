@@ -24,6 +24,10 @@ Date: 2026-09-26. Scope: the first single-user conversation/consultation preview
 The development host's authenticated preview was exposed over a private HTTPS
 connection for device testing. Automated browser access was blocked by the client,
 so no browser, microphone or native Mac acceptance is inferred from server health.
+Manual access from the intended Mac also failed. The operator reports a tailnet
+requiring individual permissions; its current ACL/grants policy has not yet been
+read. This is a leading configuration question, not a confirmed diagnosis. See
+[tailnet access](tailnet-access.md) for the separate policy-review boundary.
 A separate attempt to attach a control socket to a primary WebSocket session
 returned HTTP 404 and was closed through the primary connection. The documented
 sideband path targets [WebRTC/SIP sessions](https://developers.openai.com/api/docs/guides/voice-server-controls?api=live);

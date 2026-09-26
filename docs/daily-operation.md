@@ -23,6 +23,8 @@ actions. The existing owner token still supports trusted local collectors.
 `INNOVOX_ORIGIN` when configured. An explicit remote `--url` requires the intended
 owner token through `INNOVOX_ACCESS_TOKEN`; the CLI does not send a local token
 to an arbitrary remote origin automatically. Use HTTPS for remote browser access.
+For a restricted tailnet, complete the [access-policy review](tailnet-access.md)
+before assuming the browser can reach the exposed service.
 
 ## Start after Mac login and recover from process failure
 
