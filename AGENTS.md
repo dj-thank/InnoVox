@@ -2,7 +2,7 @@
 
 ## Product intent
 
-- Read `docs/product.md`, `docs/architecture.md`, and the relevant milestone in
+- Read `docs/requirements.md`, `docs/product.md`, `docs/architecture.md`, and the relevant milestone in
   `docs/roadmap.md` before changing behavior.
 - The distinguishing behavior is proactive, project-aware context assistance.
   AskUser forwarding is a supported input, not the product's trigger or purpose.
@@ -10,6 +10,9 @@
   a deployment-independent core and a path to one-computer operation.
 - The user's current explicit instruction takes precedence over an earlier plan.
   Keep its implications reflected in project documentation.
+- Map changes to the original requirements and actual acceptance evidence. Do not
+  promote an assistant-selected preview scope or synthetic checks into completion
+  of the original product loop.
 
 ## Delivery
 

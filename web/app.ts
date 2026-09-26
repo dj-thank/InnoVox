@@ -23,6 +23,10 @@ async function request<T>(path: string, data?: unknown, method = 'POST'): Promis
 }
 const voice = new Voice(request, el<HTMLAudioElement>('voice-audio'), s => { el('voice-status').textContent = s; }, delta => {
   const input = el<HTMLTextAreaElement>('voice-draft'); input.value = (input.value + delta).slice(0, 4000);
+}, () => {
+  voiceQuestion = undefined;
+  void refresh().catch(e => notice(e.message));
+  notice('音声による確認で回答を保存しました。送信先への反映はまだ未確認です。');
 });
 function bind(id: string, handler: () => Promise<unknown> | unknown) {
   el(id).addEventListener('click', () => { void Promise.resolve().then(handler).catch(e => notice(String(e.message ?? e))); });
@@ -50,13 +54,13 @@ async function refresh() {
   // Keep partially typed answers and caret position intact during polling.
   const focused = document.activeElement as HTMLTextAreaElement | null;
   if (!focused?.matches('[data-answer]')) {
-    el('questions').innerHTML = pending.map(q => `<article class="question"><span class="source">${escape(q.adapter)} / ${escape(q.sessionId)}</span><h3>${escape(q.question)}</h3><p>${escape(q.reason)}</p><details><summary>この確認の根拠</summary><p>会話: ${escape(q.evidenceEventIds.join(', '))}<br>保持条件: ${escape(q.conditionIds.join(', '))}</p></details><textarea data-answer="${escape(q.id)}" maxlength="4000" rows="2" placeholder="意図や訂正を伝える">${escape(drafts.get(q.id) ?? '')}</textarea><div class="row"><button class="primary" data-save="${escape(q.id)}">回答を保存</button><button data-voice="${escape(q.id)}" ${state.capabilities.providerConfigured ? '' : 'disabled'}>音声で相談</button><button class="link" data-cancel="${escape(q.id)}">今回は閉じる</button></div></article>`).join('') || '<p class="empty">いま回答が必要な確認はありません。<br>自動分析を有効にすると、会話の変化に合わせてAstraが必要な前提を照合します。</p>';
+    el('questions').innerHTML = pending.map(q => `<article class="question"><span class="source">${escape(q.adapter)} / ${escape(q.sessionId)}</span><h3>${escape(q.question)}</h3><p>${escape(q.reason)}</p>${q.contextCurrent === false ? '<p>会話が更新されました。Astraで再確認してから回答してください。</p>' : ''}<details><summary>この確認の根拠</summary><p>会話: ${escape(q.evidenceEventIds.join(', '))}<br>保持条件: ${escape(q.conditionIds.join(', '))}</p></details><textarea data-answer="${escape(q.id)}" maxlength="4000" rows="2" placeholder="意図や訂正を伝える">${escape(drafts.get(q.id) ?? '')}</textarea><div class="row"><button class="primary" data-save="${escape(q.id)}" ${q.contextCurrent === false ? 'disabled' : ''}>回答を保存</button><button data-voice="${escape(q.id)}" ${state.capabilities.providerConfigured && q.contextCurrent !== false ? '' : 'disabled'}>音声で相談</button><button class="link" data-cancel="${escape(q.id)}">今回は閉じる</button></div></article>`).join('') || '<p class="empty">いま回答が必要な確認はありません。<br>自動分析を有効にすると、会話の変化に合わせてAstraが必要な前提を照合します。</p>';
   }
   el('deliveries').innerHTML = state.deliveries.map(d => `<div class="delivery"><small>${escape(d.adapter)} / ${escape(d.sessionId)} · ${d.status === 'queued' ? '保存済み・送信先への反映は未確認' : escape(d.status)}</small><p>${escape(d.text)}</p><button data-copy="${escape(d.id)}">回答をコピー</button></div>`).join('') || '<p class="muted">確認への回答はここに保存されます。</p>';
   el('messages').innerHTML = [...state.messages].reverse().slice(0, 20).map(m => `<article class="message"><small>${escape(m.source.adapter)} / ${escape(m.payload.role ?? m.kind)} · ${escape(new Date(m.occurredAt).toLocaleTimeString())}</small><p>${escape(m.payload.text ?? JSON.stringify(m.payload))}</p></article>`).join('') || '<p class="muted">まだ会話が取り込まれていません。</p>';
   if (voiceQuestion) {
     const active = await request<Consultation>('/api/consultations/' + voiceQuestion.id);
-    if (active.status !== 'pending' || active.version !== voiceQuestion.version) {
+    if (active.status !== 'pending' || active.version !== voiceQuestion.version || active.contextCurrent === false) {
       voice.stop(); voiceQuestion = undefined; notice('対象の確認が更新または終了しました。音声の返答を自動適用しません。');
     }
   }

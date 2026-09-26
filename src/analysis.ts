@@ -46,7 +46,7 @@ export class Analyzer {
       if (!snapshot.events.length) throw new DomainError('no_messages', 'No accessible messages in this session.', 422);
       const pending = this.store.consultations(s.projectId).find(c => c.status === 'pending' &&
         c.adapter === s.adapter && c.sessionId === s.sessionId && c.epoch === snapshot.session.epoch);
-      if (pending) {
+      if (pending && pending.contextFingerprint === snapshot.fingerprint) {
         this.results.set(key(s), { state: 'question', at: new Date().toISOString() });
         return pending;
       }
@@ -54,6 +54,7 @@ export class Analyzer {
       const proposal = await this.reasoner.analyze(snapshot);
       if (this.closed) return null;
       const c = proposal ? this.store.propose(snapshot, proposal) : null;
+      if (!proposal) this.store.clearObsoleteQuestion(snapshot);
       this.results.set(key(s), { state: c ? 'question' : 'quiet', at: new Date().toISOString() });
       return c;
     } catch (e) {

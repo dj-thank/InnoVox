@@ -9,6 +9,8 @@ to the right task.
 
 [日本語](README.ja.md) · [Run the preview](docs/operations.md) · [Mac guide](docs/platforms/macos.md) · [Architecture](docs/architecture.md) · [Roadmap](docs/roadmap.md) · [Contributing](CONTRIBUTING.md)
 
+**The original end-to-end product is not complete.** See [requirements and acceptance](docs/requirements.md); live voice, real agent delivery, discovery and hosted-service acceptance remain open.
+
 ## Status
 
 An initial **single-user preview** implements persistent conversation events,

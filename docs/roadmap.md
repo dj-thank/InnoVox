@@ -2,6 +2,8 @@
 
 Every milestone needs a runnable demonstration and explicit acceptance evidence.
 The order below expresses product intent, not a claim that these features exist.
+The [original acceptance scenario](requirements.md#critical-acceptance-scenario)
+remains open; API credentials alone will not complete it.
 
 ## M0 — Public project foundation
 
@@ -33,6 +35,9 @@ reasoning, GPT Live voice, or a supported application's integration.
 
 The WebRTC and Astra HTTP adapters are implemented and contract-tested with
 synthetic responses. All live-provider and human acceptance items below remain open.
+Contextual voice follow-ups, answer read-back, explicit spoken confirmation and
+idempotent persistence now have a synthetic controller-to-HTTP test. This is not
+real microphone, model, agent-delivery or human acceptance.
 
 - Supported, authenticated GPT Live connection.
 - Astra receives only the relevant conversation/project context.

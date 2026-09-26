@@ -38,21 +38,30 @@ For Mac, read [the feature and permission guide](platforms/macos.md).
 ## Behavior and limits
 
 - A project must explicitly opt into automatic analysis. Manual analysis is an
-  explicit provider action. Relevant conditions and at most 40 recent message
-  events (up to 3,000 characters per event) are supplied as reference data.
+  explicit provider action. Relevant conditions, up to 40 recent target-session records and 40 peer-session
+  records from the same project are considered. Complete records are selected
+  within an 80,000-character observation budget; omissions are explicit. Evidence
+  IDs include the source session and epoch, so repeated vendor IDs cannot collide.
 - Analysis is serialized and automatic collection is batched. Local hourly
   admission limits persist across restarts. These are not monetary billing caps.
 - The browser limits one voice interaction to five minutes in a normally running
   tab. This is a UI limit, not a server-enforced billing limit; do not expose it
   as an unlimited public service. Provider access controls and cost enforcement
   are prerequisites for hosted rollout.
-- Voice transcript deltas are drafts. The user can correct them before saving.
-  Closing or switching a window must not silently approve a draft.
+- Voice transcript deltas go to Astra for contextual interpretation. A candidate
+  answer is read back, then a separate explicit spoken confirmation can save it
+  without clicking Save. The client waits for read-back context acknowledgment
+  and does not commit if more speech arrived during interpretation. This is not
+  proof of audible playback or speaker identity; real voice acceptance is open.
+- The current UI still starts voice per question. Persistent voice presence and
+  automatic announcement of newly detected questions remain unimplemented.
 - Answers are queued for their original session. Copying an answer does not mark
   it delivered. An adapter must claim a delivery and supply a receipt; a crash
   while claimed changes the outcome to unknown and disables automatic retries.
-- Questions expire after 15 minutes. Updated project conditions or a newer
-  explicit session epoch supersede pending questions and cancel queued answers.
+- Questions expire after 15 minutes. Source-context changes block old answers
+  and deliveries until reconciliation; a fresh analysis can retire an obsolete
+  question. Unchanged questions skip repeated model calls. Updated project
+  conditions or a newer explicit epoch supersede pending questions.
 - The current UI does not promote answers into permanent project conditions.
   Edit the conditions explicitly when the intended project policy changes.
 
@@ -102,6 +111,12 @@ Browser requests must use the configured origin. Payloads are JSON, bounded to
 - `POST /api/consultations/:id/cancel`: cancel a pending question.
 - `POST /api/deliveries/:id/claim`, `POST /api/deliveries/:id/receipt`: delivery lifecycle.
 - `POST /api/live/session`: pending question/version and browser SDP offer.
+- `POST /api/consultations/:id/voice/interpret`: stable turn id, question version,
+  and speech transcript; returns a clarification, draft or confirmation resolution.
+- `POST /api/consultations/:id/voice/readback`: records client-observed provider
+  context acknowledgment for a draft; never records human approval.
+- `POST /api/consultations/:id/voice/commit`: consumes the current short-lived
+  confirmation resolution id to atomically save the answer and delivery intent.
 - `POST /api/demo`: explicit synthetic sample.
 
 Unknown domain event kinds are preserved. Unsupported schema versions are
@@ -132,3 +147,12 @@ collector parsers, HTTP boundaries, and mocked provider response shapes.
 The CI matrix runs on Linux, Windows, and macOS; a container job builds the
 Dockerfile. Mocked provider checks do not establish live provider access or
 human acceptance. Actual browser/device evidence is tracked separately.
+
+## Upgrade from 0.1
+
+Stop the single service and back up its state before upgrading. Version 0.2 adds
+voice conversation tables and advances SQLite user_version to 2; the older binary
+will reject the newer database. Existing event/answer rows are retained. Legacy
+questions without a context fingerprint require re-analysis before accepting or
+delivering an answer. The product-level acceptance contract is in
+[original requirements](requirements.md).

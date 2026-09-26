@@ -71,3 +71,17 @@ test('Live adapter uses documented WebRTC session creation and strips extra resp
     assert.equal(result.transport.sdp, 'answer'); assert.ok(!JSON.stringify(result).includes('private'));
   } finally { store.close(); }
 });
+test('provider stops an oversized response before buffering an unbounded body', async () => {
+  let cancelled = false;
+  const stream = new ReadableStream<Uint8Array>({
+    pull(controller) { controller.enqueue(new Uint8Array(1_100_000)); },
+    cancel() { cancelled = true; },
+  });
+  const provider = new OpenAIProvider('synthetic-test-key', async () => new Response(stream));
+  const store = new Store(':memory:'); const p = seedDemo(store);
+  try {
+    await assert.rejects(provider.analyze(store.snapshot(p.id, 'synthetic', 'sample-session')), (e: unknown) =>
+      e instanceof DomainError && e.code === 'provider_response');
+    assert.equal(cancelled, true);
+  } finally { store.close(); }
+});
