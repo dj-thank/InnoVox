@@ -57,8 +57,10 @@ Astra handles proactive analysis and contextual spoken follow-ups. The original
 4o assumption was corrected to Astra. GPT Live client delegation now calls the
 voice interpretation backend rather than returning a fixed placeholder sentence.
 
-Status: implemented boundaries with synthetic contract verification only.
-Authenticated model access and actual voice behavior are still unverified.
+Status: implemented boundaries, synthetic contract verification and a bounded
+authenticated provider check. Astra produced a validated structured proposal and
+GPT Live produced nonzero audio over WebSocket. Browser voice and actual human
+conversation remain unverified.
 
 ### R05 — Confirm through voice
 
@@ -130,10 +132,10 @@ Status: architecture direction and partial runtime portability, not quality pari
 
 The repository and source are public. The maintainer's final license choice is MIT,
 superseding the earlier Apache-2.0 choice. The selected provider route is the public
-API with a new InnoVox-specific key; secure runtime configuration and authenticated
-provider access still need verification.
+API with a new InnoVox-specific key. Protected runtime configuration and bounded
+authenticated Astra/GPT Live access have been verified in the development environment.
 
-Status: repository/license delivered; credentials pending.
+Status: repository/license delivered; development credential and provider checks verified.
 
 ### R12 — Understand Mac capabilities and settings
 
@@ -170,7 +172,8 @@ or a Mac CI job passed.
    qualified cross-session evidence, voice interpretation/readback/confirmation,
    and complete answer envelopes.
 2. Complete the first real agent delivery adapter and observe its receipt.
-3. Finish secure provider setup and perform the actual voice/agent loop above.
+3. Validate browser WebRTC and perform the actual voice/agent loop above using
+   the now-verified provider configuration.
 4. Add persistent voice presence, validate scoped session discovery in actual
    use, then measure intervention value and response latency.
 5. Deliver the public hosted experience, then extend self-hosted/offline parity.

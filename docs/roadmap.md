@@ -11,7 +11,7 @@ remains open; API credentials alone will not complete it.
 - [x] Product direction and development instructions published.
 - [x] MIT License selected and published.
 - [x] GPT Live public API and a new InnoVox-specific key selected.
-- [ ] Secure key provisioning and authenticated provider access verified.
+- [x] Protected dedicated credential and bounded authenticated provider access verified.
 - [x] First implementation stack and its reasons recorded in ADR 0001.
 
 ## M1 — A reliable conversation-to-consultation slice
@@ -34,12 +34,13 @@ reasoning, GPT Live voice, or a supported application's integration.
 ## M2 — GPT Live + Astra, real end-to-end
 
 The WebRTC and Astra HTTP adapters are implemented and contract-tested with
-synthetic responses. All live-provider and human acceptance items below remain open.
+synthetic responses. A real Astra structured proposal and GPT Live WebSocket
+audio output now pass the bounded diagnostic. Browser and human acceptance remain open.
 Contextual voice follow-ups, answer read-back, explicit spoken confirmation and
 idempotent persistence now have a synthetic controller-to-HTTP test. This is not
 real microphone, model, agent-delivery or human acceptance.
 
-- Supported, authenticated GPT Live connection.
+- Supported, authenticated GPT Live browser WebRTC connection.
 - Astra receives only the relevant conversation/project context.
 - A useful proactive question occurs without an AskUser event.
 - A spoken answer reaches the intended task and its receipt is observable.

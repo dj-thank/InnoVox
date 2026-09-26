@@ -2,8 +2,9 @@
 
 This is a **single-user preview**, not a multi-tenant public service. It implements
 durable conversation observations, project conditions, source-bound questions,
-answers, and a delivery queue. GPT Live and Astra adapters exist but need live
-account and human validation. An optional Codex relay is described in
+answers, and a delivery queue. Bounded authenticated Astra responses and GPT Live
+WebSocket output are verified; browser voice and human validation remain open.
+An optional Codex relay is described in
 [connectors](connectors.md); desktop-wide attachment, Claude delivery and native
 screen capture remain open.
 

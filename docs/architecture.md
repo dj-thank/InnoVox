@@ -2,8 +2,9 @@
 
 Status: the first single-user preview implements the core, HTTP service, browser
 UI, scoped conversation collection, an optional Codex delivery bridge and provider
-boundaries. An isolated native Codex transport test passes; working-agent use,
-live providers and native audio/screen validation remain pending.
+boundaries. Isolated native Codex transport and bounded authenticated Astra/GPT
+Live WebSocket checks pass; working-agent use, browser voice and native audio/screen
+validation remain pending.
 See [operations](operations.md) for limits.
 
 ## Boundaries
@@ -34,7 +35,8 @@ through their adapter boundaries. Keep the long-lived provider key on the server
 or in a protected local configuration, outside browser bundles and public source.
 
 The first browser voice adapter uses WebRTC and server-side HTTP session creation.
-Credential creation and authenticated provider access are not yet verified.
+Protected credential persistence and bounded authenticated Astra/GPT Live
+WebSocket access are verified. The browser's WebRTC path still needs live validation.
 
 ## Cloud-first capture
 

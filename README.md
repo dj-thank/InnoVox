@@ -16,7 +16,8 @@ to the right task.
 An initial **single-user preview** implements persistent conversation events,
 project conditions, source-bound consultations, answers and a delivery queue.
 A browser UI and selected-file Codex/Claude Code collectors are included.
-GPT Live WebRTC and Astra adapters have contract tests; real provider access and
+Astra's real structured response and GPT Live WebSocket audio output passed a
+bounded authenticated [provider check](docs/verification.md). Browser WebRTC and
 human voice acceptance remain unverified. Scoped session discovery and an optional
 Codex App Server delivery bridge are included; see [connectors](docs/connectors.md).
 Native screen capture, Claude delivery, and universal desktop attachment remain
@@ -51,8 +52,8 @@ collection, cloud deployment preparation, and current limits.
 The initial direction is **cloud first, GPT Live for the voice experience, and
 Astra for reasoning**. The selected integration approach is the **GPT Live public
 API with a new InnoVox-specific API key**. The implemented browser transport is
-WebRTC. Key provisioning, authenticated provider access, and production hosting
-remain to be verified or selected before a live integration is claimed.
+WebRTC. A dedicated credential and bounded provider access are verified in the
+development environment. Browser voice acceptance and production hosting remain open.
 
 The long-term direction is the same product on a hosted service or one capable
 personal computer. Shared behavior, exportable data, documented protocols, and
