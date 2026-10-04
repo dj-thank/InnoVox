@@ -22,6 +22,7 @@ export class Voice {
   private inputRevision = 0;
   private resolvingPeer?: RTCPeerConnection;
   private completed = false;
+  private dialogueId?: string;
   private pendingDelegations: string[] = [];
   private handledDelegations = new Set<string>();
   private readbackAcks = new Map<string, string>();
@@ -38,6 +39,8 @@ export class Voice {
   }
   private async resolveSpeech(peer: RTCPeerConnection, q: { id: string; version: number }) {
     if (this.resolvingPeer === peer || !this.pendingDelegations.length || this.peer !== peer) return;
+    const dialogueId = this.dialogueId;
+    if (!dialogueId) return;
     this.resolvingPeer = peer;
     const delegationId = this.pendingDelegations.shift()!;
     try {
@@ -55,8 +58,8 @@ export class Voice {
       }
       this.status('Astraが返答とプロジェクトの文脈を確認しています…');
       const result = await this.request<VoiceResolution>(`/api/consultations/${q.id}/voice/interpret`,
-        { turnId: crypto.randomUUID(), expectedVersion: q.version, transcript });
-      if (this.peer !== peer) return;
+        { dialogueId, turnId: crypto.randomUUID(), expectedVersion: q.version, transcript });
+      if (this.peer !== peer || this.dialogueId !== dialogueId) return;
       if (revision !== this.inputRevision) {
         this.append('session.commentary.append', '続きや訂正を受け取りました。先ほどの解釈では確定しません。', delegationId); return;
       }
@@ -136,10 +139,12 @@ export class Voice {
         peer.addEventListener('icegatheringstatechange', done); done();
       });
       if (this.peer !== peer) return;
-      const result = await this.request<{ transport: { sdp: string }; consultationId: string }>('/api/live/session',
+      const result = await this.request<{ transport: { sdp: string }; consultationId: string; dialogueId: string }>('/api/live/session',
         { consultationId: q.id, expectedVersion: q.version, sdp: peer.localDescription?.sdp });
       if (this.peer !== peer) return;
+      this.dialogueId = result.dialogueId;
       await peer.setRemoteDescription({ type: 'answer', sdp: result.transport.sdp });
+      if (this.peer !== peer) return;
       this.closeTimer = setTimeout(() => {
         if (this.peer === peer && !this.ready) { this.status('音声セッション開始を確認できませんでした。'); this.cleanup(); }
       }, 20_000);
@@ -154,7 +159,7 @@ export class Voice {
   }
   cleanup() {
     const peer = this.peer, channel = this.channel;
-    this.peer = undefined; this.channel = undefined; this.ready = false;
+    this.peer = undefined; this.dialogueId = undefined; this.channel = undefined; this.ready = false;
     this.utterance = ''; this.inputRevision++; this.pendingDelegations = []; this.readbackAcks.clear(); this.readbackPending = undefined;
     if (this.closeTimer) clearTimeout(this.closeTimer);
     if (this.durationTimer) clearTimeout(this.durationTimer);

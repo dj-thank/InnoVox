@@ -28,7 +28,7 @@ export const voiceDecisionSchema = z.object({
   intent: z.enum(['clarify', 'draft', 'confirm']), reply: text(1600), answerText: text(4000).nullable(),
 }).strict();
 export const voiceTurnSchema = z.object({
-  turnId: id, expectedVersion: z.number().int().positive(), transcript: text(8000),
+  dialogueId: id, turnId: id, expectedVersion: z.number().int().positive(), transcript: text(8000),
 }).strict();
 export type VoiceTurn = z.infer<typeof voiceTurnSchema>;
 export type VoiceDecision = z.infer<typeof voiceDecisionSchema>;

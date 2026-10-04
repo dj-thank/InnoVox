@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { answerSchema, eventSchema, fail, messageSchema, projectInput, proposalSchema, voiceDecisionSchema } from './contracts.js';
+import { answerSchema, eventSchema, fail, messageSchema, projectInput, proposalSchema, voiceDecisionSchema, voiceTurnSchema } from './contracts.js';
 import type { Answer, Consultation, ConversationEvent, Delivery, Project, Session, Snapshot, VoiceState, VoiceResolution, VoiceTurn } from './contracts.js';
 import { evidenceRef, reasoningContext } from './context.js';
 
@@ -322,20 +322,28 @@ export class Store {
     this.db.prepare('INSERT INTO voice_dialogues VALUES(?,?)').run(consultationId, value);
     return value;
   }
-  resetVoiceDialogue(consultationId: string) {
-    this.tx(() => {
+  assertVoiceDialogue(consultationId: string, dialogueId: string) {
+    const row = this.db.prepare('SELECT id FROM voice_dialogues WHERE consultation=?').get(consultationId);
+    if (!dialogueId || row?.id !== dialogueId) fail('stale_dialogue', 'Voice connection identity is missing or replaced.');
+  }
+  resetVoiceDialogue(consultationId: string): string {
+    return this.tx(() => {
       this.db.prepare('DELETE FROM voice_state WHERE consultation=?').run(consultationId);
-      this.db.prepare('INSERT OR REPLACE INTO voice_dialogues VALUES(?,?)').run(consultationId, randomUUID());
+      const dialogueId = randomUUID();
+      this.db.prepare('INSERT OR REPLACE INTO voice_dialogues VALUES(?,?)').run(consultationId, dialogueId);
       this.audit('voice.dialogue_started', { consultationId, previousReadbackInvalidated: true });
+      return dialogueId;
     });
   }
   voiceResult(consultationId: string, input: VoiceTurn): VoiceResolution | undefined {
+    voiceTurnSchema.parse(input);
+    this.assertVoiceDialogue(consultationId, input.dialogueId);
     const row = this.db.prepare('SELECT digest,json FROM voice_turns WHERE consultation=? AND turn_id=?').get(consultationId, input.turnId);
     if (row && row.digest !== hash(input)) fail('voice_turn_conflict', 'Voice turn id was reused with different content.');
     if (!row) return undefined;
     const cached = decode<{ result: VoiceResolution; dialogueId: string; fingerprint: string }>(row);
     const q = this.consultation(consultationId);
-    if (!cached?.result || cached.dialogueId !== this.voiceDialogueId(consultationId) ||
+    if (!cached?.result || cached.dialogueId !== input.dialogueId ||
         cached.fingerprint !== q.contextFingerprint || cached.result.expectedVersion !== q.version || !this.contextCurrent(q)) return undefined;
     return cached.result;
   }
@@ -348,10 +356,12 @@ export class Store {
       this.audit('voice.confirmation_invalidated', { consultationId, reason: 'A newer utterance is being interpreted.' });
     });
   }
-  recordVoiceResult(consultationId: string, input: VoiceTurn, decisionInput: unknown, dialogueId = this.voiceDialogueId(consultationId)): VoiceResolution {
+  recordVoiceResult(consultationId: string, input: VoiceTurn, decisionInput: unknown): VoiceResolution {
+    voiceTurnSchema.parse(input);
+    const dialogueId = input.dialogueId;
     const decision = voiceDecisionSchema.parse(decisionInput);
     return this.tx(() => {
-      if (dialogueId !== this.voiceDialogueId(consultationId)) fail('stale_dialogue', 'Voice connection changed during interpretation.');
+      this.assertVoiceDialogue(consultationId, dialogueId);
       const existing = this.voiceResult(consultationId, input); if (existing) return existing;
       const q = this.consultation(consultationId);
       if (q.status !== 'pending' || q.version !== input.expectedVersion || !this.contextCurrent(q)) {

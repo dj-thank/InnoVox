@@ -78,11 +78,11 @@ test('voice drafts require read-back, explicit confirmation and an idempotent co
       : { intent: 'draft', reply: 'Draft.', answerText: 'Keep offline saves.' };
   } });
   try {
-    const draft = await service.interpret(q.id, { turnId: 'v1', expectedVersion: 1, transcript: 'Keep offline saves.' });
+    const draft = await service.interpret(q.id, { dialogueId: store.voiceDialogueId(q.id), turnId: 'v1', expectedVersion: 1, transcript: 'Keep offline saves.' });
     assert.equal(draft.intent, 'draft'); assert.equal(store.deliveries().length, 0);
-    await assert.rejects(service.interpret(q.id, { turnId: 'too-early', expectedVersion: 1, transcript: 'Yes' }), code('voice_confirmation'));
+    await assert.rejects(service.interpret(q.id, { dialogueId: store.voiceDialogueId(q.id), turnId: 'too-early', expectedVersion: 1, transcript: 'Yes' }), code('voice_confirmation'));
     store.markVoiceReadback(q.id, 'v1');
-    const confirmed = await service.interpret(q.id, { turnId: 'v2', expectedVersion: 1, transcript: 'Yes' });
+    const confirmed = await service.interpret(q.id, { dialogueId: store.voiceDialogueId(q.id), turnId: 'v2', expectedVersion: 1, transcript: 'Yes' });
     assert.equal(seen.at(-1), 'Keep offline saves.'); assert.equal(store.deliveries().length, 0);
     const result = store.commitVoiceAnswer(q.id, confirmed.resolutionId!);
     assert.equal(result.consultation.answer?.text, 'Keep offline saves.');
@@ -95,7 +95,7 @@ test('a corrected voice draft replaces the old confirmation and expires', async 
   let now = new Date('2026-09-26T00:00:00Z');
   const { store, propose } = fixture(() => now); const q = propose();
   const save = (turnId: string, transcript: string, intent: VoiceDecision['intent'], answerText: string | null) =>
-    store.recordVoiceResult(q.id, { turnId, transcript, expectedVersion: 1 }, { intent, answerText, reply: 'Reply.' });
+    store.recordVoiceResult(q.id, { dialogueId: store.voiceDialogueId(q.id), turnId, transcript, expectedVersion: 1 }, { intent, answerText, reply: 'Reply.' });
   try {
     save('d1', 'Option A', 'draft', 'Option A'); store.markVoiceReadback(q.id, 'd1');
     const old = save('c1', 'Yes', 'confirm', null);
@@ -114,7 +114,7 @@ test('late reasoning cannot confirm a question changed during the voice request'
     return { intent: 'draft', reply: 'Old reply.', answerText: 'Old answer.' };
   } });
   try {
-    await assert.rejects(service.interpret(q.id, { turnId: 'late', expectedVersion: 1, transcript: 'Yes' }), code('stale_context'));
+    await assert.rejects(service.interpret(q.id, { dialogueId: store.voiceDialogueId(q.id), turnId: 'late', expectedVersion: 1, transcript: 'Yes' }), code('stale_context'));
     assert.equal(store.deliveries().length, 0);
   } finally { store.close(); }
 });
@@ -126,17 +126,17 @@ test('voice framing preserves every character including the end of long Japanese
 });
 test('a new utterance invalidates an earlier confirmation before slow interpretation finishes', async () => {
   const { store, propose } = fixture(); const q = propose();
-  store.recordVoiceResult(q.id, { turnId: 'draft', transcript: 'Option A', expectedVersion: 1 },
+  store.recordVoiceResult(q.id, { dialogueId: store.voiceDialogueId(q.id), turnId: 'draft', transcript: 'Option A', expectedVersion: 1 },
     { intent: 'draft', answerText: 'Option A', reply: 'Draft' });
   store.markVoiceReadback(q.id, 'draft');
-  const old = store.recordVoiceResult(q.id, { turnId: 'confirmed', transcript: 'Yes', expectedVersion: 1 },
+  const old = store.recordVoiceResult(q.id, { dialogueId: store.voiceDialogueId(q.id), turnId: 'confirmed', transcript: 'Yes', expectedVersion: 1 },
     { intent: 'confirm', answerText: null, reply: 'Confirmed' });
   let release!: () => void; const gate = new Promise<void>(resolve => { release = resolve; });
   const service = new VoiceConversations(store, { available: true, async respondToVoice() {
     await gate; return { intent: 'draft', answerText: 'Option B', reply: 'New draft' };
   } });
   try {
-    const interpreting = service.interpret(q.id, { turnId: 'correction', transcript: 'No, option B', expectedVersion: 1 });
+    const interpreting = service.interpret(q.id, { dialogueId: store.voiceDialogueId(q.id), turnId: 'correction', transcript: 'No, option B', expectedVersion: 1 });
     assert.throws(() => store.commitVoiceAnswer(q.id, old.resolutionId!), code('voice_confirmation'));
     release(); await interpreting; assert.equal(store.deliveries().length, 0);
   } finally { release(); store.close(); }
@@ -144,10 +144,10 @@ test('a new utterance invalidates an earlier confirmation before slow interpreta
 test('a new voice dialogue cannot confirm a read-back from the previous connection', () => {
   const { store, propose } = fixture(); const q = propose();
   try {
-    store.recordVoiceResult(q.id, { turnId: 'old-draft', transcript: 'Option A', expectedVersion: 1 },
+    store.recordVoiceResult(q.id, { dialogueId: store.voiceDialogueId(q.id), turnId: 'old-draft', transcript: 'Option A', expectedVersion: 1 },
       { intent: 'draft', answerText: 'Option A', reply: 'Draft' });
     store.markVoiceReadback(q.id, 'old-draft');
-    const old = store.recordVoiceResult(q.id, { turnId: 'old-confirm', transcript: 'Yes', expectedVersion: 1 },
+    const old = store.recordVoiceResult(q.id, { dialogueId: store.voiceDialogueId(q.id), turnId: 'old-confirm', transcript: 'Yes', expectedVersion: 1 },
       { intent: 'confirm', answerText: null, reply: 'Confirm' });
     store.resetVoiceDialogue(q.id);
     assert.throws(() => store.commitVoiceAnswer(q.id, old.resolutionId!), code('voice_confirmation'));
