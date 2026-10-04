@@ -36,7 +36,8 @@ export type VoiceResolution = {
   turnId: string; intent: VoiceDecision['intent']; reply: string; answerText: string | null;
   resolutionId: string | null; expectedVersion: number; expiresAt: string;
 };
-export type VoiceState = { candidate: string | null; expectedVersion: number;
+export type VoiceDialogue = { turns: Array<{ human: string; assistant: string }>; omittedTurns: number; draftAnswer: string | null };
+export type VoiceState = { dialogueId: string; history: VoiceDialogue; candidate: string | null; expectedVersion: number;
   candidatePresented: boolean; contextFingerprint: string; latest: VoiceResolution };
 export const answerSchema = z.object({
   answerId: id, text: text(4000), expectedVersion: z.number().int().positive(),

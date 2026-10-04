@@ -17,12 +17,14 @@ export class VoiceConversations {
     this.busy.add(consultationId);
     try {
       const snapshot = this.store.snapshot(q.projectId, q.adapter, q.sessionId);
-      const previous = this.store.voiceState(q.id);
+      const dialogueId = this.store.voiceDialogueId(q.id);
+      const prior = this.store.voiceState(q.id);
+      const previous = prior?.dialogueId === dialogueId && prior.expectedVersion === q.version && prior.contextFingerprint === snapshot.fingerprint ? prior : undefined;
       const candidate = previous?.expectedVersion === q.version && previous.contextFingerprint === snapshot.fingerprint && previous.candidatePresented ? previous.candidate : null;
       this.store.invalidateVoiceConfirmation(q.id);
       this.store.consumeBudget('analysis', this.hourlyLimit);
-      const result = await this.provider.respondToVoice(snapshot, q, turn.transcript, candidate);
-      return this.store.recordVoiceResult(q.id, turn, result);
+      const result = await this.provider.respondToVoice(snapshot, q, turn.transcript, candidate, previous?.history);
+      return this.store.recordVoiceResult(q.id, turn, result, dialogueId);
     } finally { this.busy.delete(consultationId); }
   }
 }
