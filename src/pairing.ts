@@ -19,18 +19,20 @@ export class BrowserPairing {
     if (!pending || pending.expires <= this.now() || pending.attempts >= 5) {
       this.pending = undefined; throw new DomainError('pairing_expired', '接続コードが無効または期限切れです。新しいコードを発行してください。', 401);
     }
-    pending.attempts++;
     const candidate = code.replace('-', '');
     if (!/^\d{8}$/.test(candidate) || !same(pending.digest, digest(candidate))) {
+      pending.attempts++;
       throw new DomainError('pairing_invalid', '接続コードが一致しません。', 401);
     }
-    this.pending = undefined; this.prune();
+    this.prune();
     if (this.sessions.size >= 16) throw new DomainError('pairing_limit', '接続端末の上限です。既存端末の接続を解除してください。', 429);
+    this.pending = undefined;
     const accessToken = randomBytes(32).toString('base64url'), expires = this.now() + 12 * 60 * 60_000;
     this.sessions.set(digest(accessToken).toString('hex'), expires);
     return { accessToken, expiresAt: new Date(expires).toISOString() };
   }
   valid(token: string) { this.prune(); return this.sessions.has(digest(token).toString('hex')); }
   revoke(token: string) { this.sessions.delete(digest(token).toString('hex')); }
+  revokeAll() { const revoked = this.sessions.size; this.sessions.clear(); return { revoked }; }
   private prune() { for (const [token, expiry] of this.sessions) if (expiry <= this.now()) this.sessions.delete(token); }
 }

@@ -12,7 +12,7 @@ export type PreparedCodexDelivery = { method: 'turn/steer' | 'thread/inject_item
 const samePath = (a: string, b: string) => /^[A-Za-z]:[\\/]/.test(a)
   ? win32.normalize(a).toLowerCase() === win32.normalize(b).toLowerCase() : posix.normalize(a) === posix.normalize(b);
 export async function initializeCodex(rpc: CodexRpc) {
-  const result = await rpc.request('initialize', { clientInfo: { name: 'innovox', version: '0.4.0' }, capabilities: { experimentalApi: true } });
+  const result = await rpc.request('initialize', { clientInfo: { name: 'innovox', version: '0.5.0' }, capabilities: { experimentalApi: true } });
   z.object({ userAgent: z.string() }).passthrough().parse(result);
   rpc.notify('initialized');
 }

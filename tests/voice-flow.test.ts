@@ -20,7 +20,9 @@ test('voice controller → HTTP → Astra adapter → readback → spoken confir
     if (String(url).endsWith('/live/sessions')) return Response.json({ session: { id: 'live_test' }, transport: { type: 'webrtc', sdp: 'answer' } });
     const payload = JSON.parse(String(options?.body)); modelRequests.push(payload);
     const input = JSON.parse(payload.input);
-    const result = input.candidateAnswer ? { intent: 'confirm', reply: '確認しました。', answerText: input.candidateAnswer }
+    const result = input.latestHumanSpeech === '背景を教えて' ? { intent: 'clarify', reply: '保存はオフライン、同期はあとで検討できます。', answerText: null }
+      : input.latestHumanSpeech === '同期だけ後回しにして' ? { intent: 'draft', reply: '訂正しました。', answerText: 'オフライン保存を維持し、同期は後回しにしてください。' }
+      : input.candidateAnswer ? { intent: 'confirm', reply: '確認しました。', answerText: input.candidateAnswer }
       : { intent: 'draft', reply: '回答案です。', answerText: 'オフラインで保存できる条件を維持してください。' };
     return Response.json({ status: 'completed', output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify(result) }] }] });
   });
@@ -55,6 +57,9 @@ test('voice controller → HTTP → Astra adapter → readback → spoken confir
   }, { srcObject: null, async play() {} } as unknown as HTMLAudioElement, () => {}, () => {}, () => { saved++; });
   try {
     await voice.start(q);
+    channel.incoming({ type: 'session.input_transcript.delta', event_id: 'intro', delta: '背景を教えて' });
+    channel.incoming({ type: 'session.delegation.created', delegation: { id: 'intro-d' } });
+    await until(() => sent.some(e => e.delegation_id === 'intro-d' && e.type === 'session.commentary.append'));
     channel.incoming({ type: 'session.input_transcript.delta', event_id: 'u1', delta: 'オフラインの条件を維持して', start_ms: 0, end_ms: 1000 });
     channel.incoming({ type: 'session.delegation.created', delegation: { id: 'd1', target: 'client' } });
     await until(() => sent.some(e => e.delegation_id === 'd1' && e.type === 'session.commentary.append'));
@@ -62,12 +67,21 @@ test('voice controller → HTTP → Astra adapter → readback → spoken confir
     const readback = sent.filter(e => e.delegation_id === 'd1' && e.type === 'session.commentary.append');
     for (const e of readback) channel.incoming({ type: 'session.commentary.appended', client_event_id: e.event_id });
     await until(() => store.voiceState(q.id)?.candidatePresented === true);
+    channel.incoming({ type: 'session.input_transcript.delta', event_id: 'correction', delta: '同期だけ後回しにして' });
+    channel.incoming({ type: 'session.delegation.created', delegation: { id: 'correction-d' } });
+    await until(() => sent.some(e => e.delegation_id === 'correction-d' && e.type === 'session.commentary.append'));
+    for (const e of sent.filter(e => e.delegation_id === 'correction-d' && e.type === 'session.commentary.append')) channel.incoming({ type: 'session.commentary.appended', client_event_id: e.event_id });
+    await until(() => store.voiceState(q.id)?.candidatePresented === true);
     channel.incoming({ type: 'session.input_transcript.delta', event_id: 'u2', delta: 'はい、それでお願いします', start_ms: 1200, end_ms: 2000 });
     channel.incoming({ type: 'session.delegation.created', delegation: { id: 'd2', target: 'client' } });
     await until(() => saved === 1);
-    assert.equal(modelRequests.length, 2); assert.ok(modelRequests.every(r => r.model === 'gpt-6-astra'));
+    assert.equal(modelRequests.length, 4);
+    const correctionInput = JSON.parse(String(modelRequests[2]!.input));
+    assert.equal(correctionInput.dialogue.turns[0].human, '背景を教えて');
+    assert.match(correctionInput.dialogue.turns[0].assistant, /同期/);
+    assert.match(correctionInput.dialogue.draftAnswer, /オフライン/); assert.ok(modelRequests.every(r => r.model === 'gpt-6-astra'));
     const answer = store.consultation(q.id).answer;
-    assert.equal(answer?.channel, 'voice'); assert.equal(answer?.text, 'オフラインで保存できる条件を維持してください。');
+    assert.equal(answer?.channel, 'voice'); assert.equal(answer?.text, 'オフライン保存を維持し、同期は後回しにしてください。');
     assert.equal(store.deliveries().length, 1); assert.equal(store.deliveries()[0]?.status, 'queued');
     channel.incoming({ type: 'session.delegation.created', delegation: { id: 'd2', target: 'client' } });
     await delay(20); assert.equal(store.deliveries().length, 1);

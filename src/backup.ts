@@ -1,13 +1,13 @@
 import { backup, DatabaseSync } from 'node:sqlite';
 import { constants, createReadStream } from 'node:fs';
-import { chmod, copyFile, lstat, mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { chmod, copyFile, lstat, mkdir, readFile, stat, writeFile, link, unlink } from 'node:fs/promises';
 import { createHash, randomUUID } from 'node:crypto';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 import { z } from 'zod';
 
-const manifestSchema = z.object({ formatVersion: z.literal(1), schemaVersion: z.number().int().min(1).max(3),
+const manifestSchema = z.object({ formatVersion: z.literal(1), schemaVersion: z.number().int().min(1).max(4),
   createdAt: z.iso.datetime(), bytes: z.number().int().positive(), sha256: z.string().regex(/^[a-f0-9]{64}$/) }).strict();
 const fingerprint = async (path: string) => {
   const hash = createHash('sha256'); for await (const chunk of createReadStream(path)) hash.update(chunk);
@@ -19,7 +19,7 @@ async function regular(path: string) {
 }
 function inspect(database: DatabaseSync) {
   const version = Number(database.prepare('PRAGMA user_version').get()?.user_version);
-  if (version < 1 || version > 3) throw new Error('Unsupported InnoVox database version.');
+  if (version < 1 || version > 4) throw new Error('Unsupported InnoVox database version.');
   if (database.prepare('PRAGMA quick_check').get()?.quick_check !== 'ok') throw new Error('Database integrity check failed.');
   for (const table of ['projects', 'sessions', 'events', 'consultations', 'deliveries', 'journal']) {
     if (!database.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table)) throw new Error('Missing InnoVox state table.');
@@ -30,19 +30,47 @@ function inspect(database: DatabaseSync) {
 export async function backupState(source: string, destination: string) {
   source = resolve(source); destination = resolve(destination);
   if (source === destination) throw new Error('Backup must use a new destination.');
-  await regular(source); await mkdir(dirname(destination), { recursive: true, mode: 0o700 });
-  // Exclusive reservation avoids replacing a user's earlier backup.
-  await writeFile(destination, '', { flag: 'wx', mode: 0o600 });
+  await regular(source);
   const database = new DatabaseSync(source, { readOnly: true });
-  try { inspect(database); await backup(database, destination); } finally { database.close(); }
-  await chmod(destination, 0o600);
-  const check = new DatabaseSync(destination, { readOnly: true });
-  let schemaVersion: number;
-  try { schemaVersion = inspect(check); } finally { check.close(); }
-  const manifest = { formatVersion: 1 as const, schemaVersion, createdAt: new Date().toISOString(),
-    bytes: (await stat(destination)).size, sha256: await fingerprint(destination) };
-  await writeFile(destination + '.manifest.json', JSON.stringify(manifest, null, 2) + '\n', { flag: 'wx', mode: 0o600 });
-  return manifest;
+  const pending = destination + '.pending-' + randomUUID();
+  const pendingManifest = pending + '.manifest.json';
+  const owned = new Map<string, { dev: number; ino: number; sha256: string }>();
+  const remember = async (path: string) => {
+    const entry = await lstat(path); owned.set(path, { dev: entry.dev, ino: entry.ino, sha256: await fingerprint(path) });
+  };
+  const removeOwned = async (path: string) => {
+    const expected = owned.get(path); if (!expected) return;
+    try {
+      const entry = await lstat(path);
+      if (entry.isFile() && !entry.isSymbolicLink() && entry.dev === expected.dev && entry.ino === expected.ino && await fingerprint(path) === expected.sha256) await unlink(path);
+    } catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+  };
+  let publishedManifest = false, complete = false;
+  try {
+    inspect(database); // Invalid sources must not reserve any output name.
+    await mkdir(dirname(destination), { recursive: true, mode: 0o700 });
+    await writeFile(pending, '', { flag: 'wx', mode: 0o600 }); await remember(pending);
+    await backup(database, pending); await chmod(pending, 0o600); await remember(pending);
+    const check = new DatabaseSync(pending);
+    let schemaVersion: number;
+    try {
+      // The standalone backup must not leave WAL sidecars at its temporary name.
+      check.exec('PRAGMA journal_mode=DELETE'); schemaVersion = inspect(check);
+    } finally { check.close(); }
+    await remember(pending);
+    const manifest = { formatVersion: 1 as const, schemaVersion, createdAt: new Date().toISOString(),
+      bytes: (await stat(pending)).size, sha256: await fingerprint(pending) };
+    await writeFile(pendingManifest, JSON.stringify(manifest, null, 2) + '\n', { flag: 'wx', mode: 0o600 }); await remember(pendingManifest);
+    // Hard links publish exclusively; a preexisting file is never replaced.
+    await link(pendingManifest, destination + '.manifest.json');
+    owned.set(destination + '.manifest.json', owned.get(pendingManifest)!); publishedManifest = true;
+    await link(pending, destination); complete = true;
+    return manifest;
+  } finally {
+    database.close();
+    if (publishedManifest && !complete) await removeOwned(destination + '.manifest.json');
+    await removeOwned(pendingManifest); await removeOwned(pending);
+  }
 }
 /** Restore to a new file only. Activation requires an explicit service reconfiguration. */
 export async function restoreState(source: string, destination: string) {

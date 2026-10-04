@@ -50,5 +50,7 @@ change routes, use another execution surface, or relax network controls to work
 around a blocked tool action. Keep tool-policy review separate from tailnet-policy
 review; a network-policy change does not override a browser tool restriction.
 
-The current Mac access remains unverified until its effective policy and actual
-source-to-service path are checked. Server health and CI cannot close that item.
+The effective policy was read on October 4 and lacked the intended web-service
+permission. A minimal proposal is awaiting approval. Mac access remains unverified
+until an approved rule and the actual source-to-service path are checked. Server
+health and CI cannot close that item.

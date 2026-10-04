@@ -2,7 +2,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { createHash, randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { answerSchema, eventSchema, fail, messageSchema, projectInput, proposalSchema, voiceDecisionSchema } from './contracts.js';
+import { answerSchema, eventSchema, fail, messageSchema, projectInput, proposalSchema, voiceDecisionSchema, voiceTurnSchema } from './contracts.js';
 import type { Answer, Consultation, ConversationEvent, Delivery, Project, Session, Snapshot, VoiceState, VoiceResolution, VoiceTurn } from './contracts.js';
 import { evidenceRef, reasoningContext } from './context.js';
 
@@ -26,7 +26,7 @@ export class Store {
     this.db = new DatabaseSync(path);
     this.db.exec('PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA busy_timeout=5000; PRAGMA foreign_keys=ON;');
     const version = Number(this.db.prepare('PRAGMA user_version').get()?.user_version);
-    if (version > 3) { this.db.close(); fail('schema_version', 'Database was created by a newer InnoVox version.'); }
+    if (version > 4) { this.db.close(); fail('schema_version', 'Database was created by a newer InnoVox version.'); }
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS projects (id TEXT PRIMARY KEY, json TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS sessions (project TEXT, adapter TEXT, session TEXT, json TEXT NOT NULL,
@@ -43,8 +43,10 @@ export class Store {
       CREATE TABLE IF NOT EXISTS voice_turns (consultation TEXT, turn_id TEXT, digest TEXT, json TEXT,
         PRIMARY KEY(consultation,turn_id));
       CREATE INDEX IF NOT EXISTS event_session ON events(project,adapter,session,epoch,sequence);
-      PRAGMA user_version=3;
+      CREATE TABLE IF NOT EXISTS voice_dialogues (consultation TEXT PRIMARY KEY, id TEXT NOT NULL);
     `);
+    // Legacy cached turns have no dialogue identity and cannot authorize confirmation.
+    if (version < 4) this.db.exec('BEGIN IMMEDIATE; DELETE FROM voice_state; DELETE FROM voice_turns; PRAGMA user_version=4; COMMIT;');
     // An in-flight delivery may have reached the destination before a crash.
     for (const d of this.deliveries()) {
       if (d.status === 'claimed') this.saveDelivery({ ...d, status: 'unknown', receipt: 'Process restarted before receipt.' });
@@ -313,16 +315,37 @@ export class Store {
   voiceState(consultationId: string): VoiceState | undefined {
     return decode<VoiceState>(this.db.prepare('SELECT json FROM voice_state WHERE consultation=?').get(consultationId));
   }
-  resetVoiceDialogue(consultationId: string) {
-    this.tx(() => {
+  voiceDialogueId(consultationId: string): string {
+    const row = this.db.prepare('SELECT id FROM voice_dialogues WHERE consultation=?').get(consultationId);
+    if (row) return String(row.id);
+    const value = randomUUID();
+    this.db.prepare('INSERT INTO voice_dialogues VALUES(?,?)').run(consultationId, value);
+    return value;
+  }
+  assertVoiceDialogue(consultationId: string, dialogueId: string) {
+    const row = this.db.prepare('SELECT id FROM voice_dialogues WHERE consultation=?').get(consultationId);
+    if (!dialogueId || row?.id !== dialogueId) fail('stale_dialogue', 'Voice connection identity is missing or replaced.');
+  }
+  resetVoiceDialogue(consultationId: string): string {
+    return this.tx(() => {
       this.db.prepare('DELETE FROM voice_state WHERE consultation=?').run(consultationId);
+      const dialogueId = randomUUID();
+      this.db.prepare('INSERT OR REPLACE INTO voice_dialogues VALUES(?,?)').run(consultationId, dialogueId);
       this.audit('voice.dialogue_started', { consultationId, previousReadbackInvalidated: true });
+      return dialogueId;
     });
   }
   voiceResult(consultationId: string, input: VoiceTurn): VoiceResolution | undefined {
+    voiceTurnSchema.parse(input);
+    this.assertVoiceDialogue(consultationId, input.dialogueId);
     const row = this.db.prepare('SELECT digest,json FROM voice_turns WHERE consultation=? AND turn_id=?').get(consultationId, input.turnId);
     if (row && row.digest !== hash(input)) fail('voice_turn_conflict', 'Voice turn id was reused with different content.');
-    return decode<VoiceResolution>(row);
+    if (!row) return undefined;
+    const cached = decode<{ result: VoiceResolution; dialogueId: string; fingerprint: string }>(row);
+    const q = this.consultation(consultationId);
+    if (!cached?.result || cached.dialogueId !== input.dialogueId ||
+        cached.fingerprint !== q.contextFingerprint || cached.result.expectedVersion !== q.version || !this.contextCurrent(q)) return undefined;
+    return cached.result;
   }
   invalidateVoiceConfirmation(consultationId: string) {
     this.tx(() => {
@@ -334,14 +357,18 @@ export class Store {
     });
   }
   recordVoiceResult(consultationId: string, input: VoiceTurn, decisionInput: unknown): VoiceResolution {
+    voiceTurnSchema.parse(input);
+    const dialogueId = input.dialogueId;
     const decision = voiceDecisionSchema.parse(decisionInput);
     return this.tx(() => {
+      this.assertVoiceDialogue(consultationId, dialogueId);
       const existing = this.voiceResult(consultationId, input); if (existing) return existing;
       const q = this.consultation(consultationId);
       if (q.status !== 'pending' || q.version !== input.expectedVersion || !this.contextCurrent(q)) {
         fail('stale_context', 'Question changed during voice interpretation.');
       }
-      const previous = this.voiceState(consultationId);
+      const prior = this.voiceState(consultationId);
+      const previous = prior?.dialogueId === dialogueId && prior.expectedVersion === q.version && prior.contextFingerprint === q.contextFingerprint ? prior : undefined;
       const candidate = previous?.expectedVersion === q.version && previous.contextFingerprint === q.contextFingerprint && previous.candidatePresented ? previous.candidate : null;
       if (decision.intent === 'confirm' && !candidate) fail('voice_confirmation', 'No current read-back answer exists to confirm.');
       if (decision.intent === 'draft' && !decision.answerText) fail('voice_draft', 'Voice draft is empty.');
@@ -350,11 +377,15 @@ export class Store {
         reply: decision.intent === 'draft' ? `${answerText}、という回答でよいですか？` : decision.reply,
         resolutionId: decision.intent === 'confirm' ? randomUUID() : null, expectedVersion: q.version,
         expiresAt: new Date(this.now().getTime() + 60_000).toISOString() };
-      const state: VoiceState = { candidate: decision.intent === 'draft' ? answerText : candidate,
-        candidatePresented: decision.intent === 'draft' ? false : Boolean(candidate),
+      const history = previous?.history ?? { turns: [], omittedTurns: 0, draftAnswer: null };
+      const turns = [...history.turns, { human: input.transcript, assistant: result.reply }];
+      let omittedTurns = history.omittedTurns;
+      while (turns.length > 8 || (turns.length > 1 && turns.reduce((n, t) => n + t.human.length + t.assistant.length, 0) > 16000)) { turns.shift(); omittedTurns++; }
+      const state: VoiceState = { dialogueId, history: { turns, omittedTurns, draftAnswer: decision.intent === 'draft' ? answerText : history.draftAnswer }, candidate: decision.intent === 'draft' ? answerText : previous?.candidate ?? null,
+        candidatePresented: decision.intent === 'draft' ? false : previous?.candidatePresented ?? false,
         expectedVersion: q.version, contextFingerprint: q.contextFingerprint!, latest: result };
       this.db.prepare('INSERT OR REPLACE INTO voice_state VALUES(?,?)').run(q.id, JSON.stringify(state));
-      this.db.prepare('INSERT INTO voice_turns VALUES(?,?,?,?)').run(q.id, input.turnId, hash(input), JSON.stringify(result));
+      this.db.prepare('INSERT OR REPLACE INTO voice_turns VALUES(?,?,?,?)').run(q.id, input.turnId, hash(input), JSON.stringify({ result, dialogueId, fingerprint: q.contextFingerprint }));
       this.audit('voice.interpreted', { consultationId, input, result }); return result;
     });
   }

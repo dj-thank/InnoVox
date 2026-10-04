@@ -28,7 +28,7 @@ export const voiceDecisionSchema = z.object({
   intent: z.enum(['clarify', 'draft', 'confirm']), reply: text(1600), answerText: text(4000).nullable(),
 }).strict();
 export const voiceTurnSchema = z.object({
-  turnId: id, expectedVersion: z.number().int().positive(), transcript: text(8000),
+  dialogueId: id, turnId: id, expectedVersion: z.number().int().positive(), transcript: text(8000),
 }).strict();
 export type VoiceTurn = z.infer<typeof voiceTurnSchema>;
 export type VoiceDecision = z.infer<typeof voiceDecisionSchema>;
@@ -36,7 +36,8 @@ export type VoiceResolution = {
   turnId: string; intent: VoiceDecision['intent']; reply: string; answerText: string | null;
   resolutionId: string | null; expectedVersion: number; expiresAt: string;
 };
-export type VoiceState = { candidate: string | null; expectedVersion: number;
+export type VoiceDialogue = { turns: Array<{ human: string; assistant: string }>; omittedTurns: number; draftAnswer: string | null };
+export type VoiceState = { dialogueId: string; history: VoiceDialogue; candidate: string | null; expectedVersion: number;
   candidatePresented: boolean; contextFingerprint: string; latest: VoiceResolution };
 export const answerSchema = z.object({
   answerId: id, text: text(4000), expectedVersion: z.number().int().positive(),

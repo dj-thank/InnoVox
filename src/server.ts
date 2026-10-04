@@ -78,6 +78,10 @@ export function buildServer(options: ServerOptions) {
       if (req.method === 'POST' && url.pathname === '/api/logout') {
         await body(req); pairing.revoke(bearer); send(res, 200, { disconnected: true }); return;
       }
+      if (req.method === 'POST' && url.pathname === '/api/pairing/revoke-all') {
+        if (!owner) throw new DomainError('owner_required', 'Only the server owner can revoke all browser sessions.', 403);
+        z.object({}).strict().parse(await body(req)); send(res, 200, pairing.revokeAll()); return;
+      }
       if (req.method === 'GET' && url.pathname === '/api/state') {
         const projectId = url.searchParams.get('projectId') || undefined;
         if (projectId) store.project(id.parse(projectId));
@@ -85,7 +89,7 @@ export function buildServer(options: ServerOptions) {
         send(res, 200, { projects: store.projects(), sessions, consultations: store.consultations(projectId).map(c => ({ ...c, contextCurrent: store.contextCurrent(c) })),
           deliveries: deliveryView(projectId), analysis: analyzer.status(),
           messages: sessions.flatMap(s => store.events(s.projectId, s.adapter, s.sessionId, s.epoch, 20)),
-          capabilities: { providerConfigured: provider.available, reasoningModel: 'gpt-6-astra', voiceModel: 'gpt-live-1',
+          capabilities: { providerConfigured: provider.available, reasoningModel: 'gpt-6-astra', voiceModel: 'gpt-live-1', voiceTurnVersion: 2,
             nativeScreenCapture: false, automaticSessionDelivery: false, deliveryBridgeAvailable: 'codex-stdio', deployment: 'single-user-preview' } }); return;
       }
       if (req.method === 'GET' && url.pathname === '/api/journal') {
@@ -157,8 +161,8 @@ export function buildServer(options: ServerOptions) {
         if (!store.contextCurrent(q)) throw new DomainError('stale_context', 'Re-analyze the question before opening voice.');
         if (!provider.available) throw new DomainError('provider_not_configured', 'OpenAI credentials are not configured.', 503);
         store.consumeBudget('live', options.maxLive ?? 6);
-        store.resetVoiceDialogue(q.id);
-        send(res, 201, await provider.createLive(input.sdp, q)); return;
+        const dialogueId = store.resetVoiceDialogue(q.id);
+        send(res, 201, { ...await provider.createLive(input.sdp, q), dialogueId }); return;
       }
       throw new DomainError('not_found', 'Route not found.', 404);
     } catch (error) {

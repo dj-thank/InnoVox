@@ -57,10 +57,11 @@ Astra handles proactive analysis and contextual spoken follow-ups. The original
 4o assumption was corrected to Astra. GPT Live client delegation now calls the
 voice interpretation backend rather than returning a fixed placeholder sentence.
 
-Status: implemented boundaries, synthetic contract verification and a bounded
-authenticated provider check. Astra produced a validated structured proposal and
-GPT Live produced nonzero audio over WebSocket. Browser voice and actual human
-conversation remain unverified.
+Status: implemented boundaries and synthetic contract verification. The earlier
+bounded provider check produced an Astra proposal and GPT Live audio; current
+authentication is blocked as recorded in verification. The voice reasoner now
+receives bounded current-dialogue history, while drafts and confirmation authority
+remain distinct. Browser voice and actual human conversation remain unverified.
 
 ### R05 — Confirm through voice
 
@@ -76,6 +77,9 @@ continuous listening, automatic announcement of new questions, natural speech
 timing, and real human acceptance remain open.
 
 Status: partial. No claim of a fully hands-free production experience.
+Client dialogue IDs now reject requests from old connections even when they
+arrive after a replacement connection has opened. Consultation/version/context
+checks still gate every confirmed effect.
 
 ### R06 — Return answers and useful context to the working agent
 
@@ -132,10 +136,11 @@ Status: architecture direction and partial runtime portability, not quality pari
 
 The repository and source are public. The maintainer's final license choice is MIT,
 superseding the earlier Apache-2.0 choice. The selected provider route is the public
-API with a new InnoVox-specific key. Protected runtime configuration and bounded
-authenticated Astra/GPT Live access have been verified in the development environment.
+API with a new InnoVox-specific key. Protected runtime configuration and the first
+authenticated check were verified. The October 4 credential is now rejected and
+requires replacement or re-registration before current provider access is claimed.
 
-Status: repository/license delivered; development credential and provider checks verified.
+Status: repository/license delivered; credential storage verified, current access pending.
 
 ### R12 — Understand Mac capabilities and settings
 

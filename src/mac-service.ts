@@ -5,6 +5,7 @@ import { homedir } from 'node:os';
 import { posix, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { z } from 'zod';
+import { installServiceFiles } from './mac-service-install.js';
 
 const hash = (value: string) => createHash('sha256').update(value).digest('hex');
 class ServiceSetupError extends Error {}
@@ -66,7 +67,7 @@ async function main() {
   };
   if (action === 'install') {
     regular(posix.join(root, 'dist/src/main.js')); regular(posix.join(root, '.innovox/access-token'));
-    if (existsSync(spec.plistPath) || existsSync(manifestPath)) {
+    if (!existsSync(manifestPath + '.install.json') && (existsSync(spec.plistPath) || existsSync(manifestPath))) {
       verifyOwner();
       if (readFileSync(spec.plistPath, 'utf8') !== spec.plist) throw new ServiceSetupError('The installed runtime changed. Keep the old service stopped and review its paths before updating.');
     } else {
@@ -76,9 +77,8 @@ async function main() {
         const path = posix.join(statePath, name);
         if (existsSync(path)) regular(path); else writeFileSync(path, '', { flag: 'wx', mode: 0o600 });
       }
-      writeFileSync(spec.plistPath, spec.plist, { flag: 'wx', mode: 0o600 });
-      writeFileSync(manifestPath, JSON.stringify({ root, node, label: spec.label, plistPath: spec.plistPath,
-        uid, digest: hash(spec.plist), installedAt: new Date().toISOString() }, null, 2), { flag: 'wx', mode: 0o600 });
+      installServiceFiles(spec.plist, manifestPath, { root, node, label: spec.label, plistPath: spec.plistPath,
+        uid, digest: hash(spec.plist), installedAt: new Date().toISOString() });
     }
   }
   if (action === 'status' && !existsSync(manifestPath)) {

@@ -118,6 +118,7 @@ Browser requests must use the configured origin. Payloads are JSON, bounded to
 - `GET /api/state?projectId=...`: current projections, recent messages and capabilities.
 - `POST /api/pairing`: owner-only creation of a one-use five-minute browser code.
 - `POST /api/pairing/exchange`: exchange that code for a twelve-hour browser credential.
+- `POST /api/pairing/revoke-all`: owner-only explicit revocation of browser connections.
 - `POST /api/logout`: revoke the current paired-browser credential.
 - `GET /api/journal?after=N`: bounded audit pages with a monotonic cursor.
 - `POST /api/projects`, `PUT /api/projects/:id`: conditions and explicit revision checking.
@@ -130,7 +131,9 @@ Browser requests must use the configured origin. Payloads are JSON, bounded to
 - `POST /api/deliveries/:id/claim`, `POST /api/deliveries/:id/receipt`: delivery lifecycle.
 - `POST /api/live/session`: pending question/version and browser SDP offer.
 - `POST /api/consultations/:id/voice/interpret`: stable turn id, question version,
-  and speech transcript; returns a clarification, draft or confirmation resolution.
+  client dialogue id and speech transcript; returns a clarification, draft or
+  confirmation resolution. Use the `dialogueId` from the current live-session
+  response and the voice-turn v2 schema; legacy requests require a browser reload.
 - `POST /api/consultations/:id/voice/readback`: records client-observed provider
   context acknowledgment for a draft; never records human approval.
 - `POST /api/consultations/:id/voice/commit`: consumes the current short-lived
@@ -171,8 +174,13 @@ human acceptance. Actual browser/device evidence is tracked separately.
 
 Stop the single service and back up its state before upgrading. Version 0.2 adds
 voice conversation tables. Version 0.3 adds protocol acceptance and verified echo
-semantics and advances SQLite user_version to 3; older binaries reject the newer
+semantics. Version 0.5 advances SQLite user_version to 4 for scoped voice dialogue
+identity; older binaries reject the newer
 database. Existing event/answer rows are retained. Legacy
 questions without a context fingerprint require re-analysis before accepting or
 delivering an answer. The product-level acceptance contract is in
 [original requirements](requirements.md).
+
+Version 0.5 intentionally invalidates older uncommitted voice drafts and cached
+confirmation results. Reload browser tabs and start a fresh voice connection after
+the upgrade. Back up before activation; do not open a v4 database with a v0.4 binary.

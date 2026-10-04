@@ -140,11 +140,11 @@ test('delivery-state upgrade preserves existing answers and rejects a newer data
     assert.equal(upgraded.consultation(question.id).answer?.text, 'Keep offline.');
     upgraded.claimDelivery(delivery.id);
     upgraded.receipt(delivery.id, 'accepted', 'Synthetic protocol receipt');
-    assert.equal(upgraded.db.prepare('PRAGMA user_version').get()?.user_version, 3);
+    assert.equal(upgraded.db.prepare('PRAGMA user_version').get()?.user_version, 4);
   } finally { upgraded.close(); }
   const restarted = new Store(path);
   try { assert.equal(restarted.deliveries()[0]?.status, 'accepted'); } finally { restarted.close(); }
-  const future = new DatabaseSync(path); future.exec('PRAGMA user_version=4'); future.close();
+  const future = new DatabaseSync(path); future.exec('PRAGMA user_version=5'); future.close();
   try { assert.throws(() => new Store(path), hasCode('schema_version')); }
   finally { assert.ok(resolve(directory).startsWith(parent + sep)); rmSync(directory, { recursive: true }); }
 });

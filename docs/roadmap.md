@@ -14,6 +14,9 @@ remains open; API credentials alone will not complete it.
 - [x] Protected dedicated credential and bounded authenticated provider access verified.
 - [x] First implementation stack and its reasons recorded in ADR 0001.
 
+The first provider check passed on September 26. Current authentication is blocked
+by an invalid credential as of October 4; the latest status is in verification.
+
 ## M1 — A reliable conversation-to-consultation slice
 
 Input: synthetic conversation events and explicit project conditions.
