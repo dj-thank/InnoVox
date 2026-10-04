@@ -18,6 +18,10 @@ Only the owner access token can issue codes; paired browsers cannot issue more.
 This remains one owner workspace, with at most sixteen browser connections, not
 tenant isolation. A paired browser can access the workspace's conversations and
 actions. The existing owner token still supports trusted local collectors.
+When abandoned tabs fill the sixteen-session pool, `pnpm pair --revoke-all`
+explicitly revokes every paired browser credential. The owner token is retained.
+Issue or reuse an unexpired code afterward. A valid code is not consumed merely
+because the pool is full. Paired browsers cannot request this owner operation.
 
 `pnpm pair` normally contacts the loopback server at `INNOVOX_PORT` and displays
 `INNOVOX_ORIGIN` when configured. An explicit remote `--url` requires the intended
@@ -50,6 +54,10 @@ change. Stop does not delete the LaunchAgent, state, logs or keys; the file rema
 eligible for the next login. There is no global process-name kill or replacement
 of unrelated services. A changed ownership receipt, plist or runtime path stops
 the operation for review. Keep the checkout and runtime path stable.
+New installations retain an owner-bound intermediate receipt when interrupted;
+retrying `install` resumes only matching staged bytes/inodes. Unknown or altered
+files are preserved for review. Stages are beside their destinations so the
+checkout and user LaunchAgents folder may be on different local volumes.
 
 For an update: stop the service, create a verified backup, update the checkout,
 install locked dependencies, build/check, start the service, then verify the

@@ -10,9 +10,16 @@ a provider request; a configured key is never printed.
 pnpm provider-check --live --report .innovox/provider-check.json --audio .innovox/provider-check.wav
 ```
 
+Add `--voice-dialogue` to make one additional Astra request with a synthetic
+previous exchange and the relative answer “the second option.” It checks draft
+interpretation from the supplied dialogue and does not commit an answer. This
+flag exercises reasoning access and a bounded semantic case; it still does not
+open a microphone or validate a real person's conversation.
+
 This explicit command performs real API work and may consume API credits:
 
 - One Astra request with the adapter's bounded output limit.
+- With `--voice-dialogue`, one additional Astra request with the same output bound.
 - With `--live`, one GPT Live primary WebSocket session using the official SDK,
   synthetic paced silence and a short generated greeting.
 - The voice check requests closure within 20 seconds and allows up to 10 seconds

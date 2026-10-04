@@ -74,8 +74,9 @@ Neither means a proprietary model's weights are available locally.
 
 Use the GPT Live public API and create a new API key dedicated to InnoVox.
 GPT Live remains the initial voice provider and Astra the reasoning head.
-The development environment now has a protected dedicated credential, with
-authenticated Astra structured output and GPT Live WebSocket audio output verified.
+The development environment has protected credential storage. Its first
+authenticated Astra/GPT Live check passed; current access is tracked in
+[verification](verification.md) and must be rechecked after credential changes.
 This bounded provider result does not complete the intended conversational experience.
 
 ## Maintainer decisions still required

@@ -74,7 +74,7 @@ function wav(pcm: Buffer) {
   header.write('data', 36); header.writeUInt32LE(audio.length, 40); return Buffer.concat([header, audio]);
 }
 async function main() {
-  const { values } = parseArgs({ options: { live: { type: 'boolean', default: false }, report: { type: 'string' }, audio: { type: 'string' } } });
+  const { values } = parseArgs({ options: { live: { type: 'boolean', default: false }, 'voice-dialogue': { type: 'boolean', default: false }, report: { type: 'string' }, audio: { type: 'string' } } });
   const key = process.env.OPENAI_API_KEY?.trim();
   if (!key) { console.log(JSON.stringify({ configured: false, tested: false, reason: 'OPENAI_API_KEY is not configured' })); process.exitCode = 2; return; }
   const store = new Store(':memory:'); const project = seedDemo(store);
@@ -89,6 +89,28 @@ async function main() {
     report.astra = { status: 'failed', code: error instanceof DomainError ? error.code : 'unexpected_error' };
     process.exitCode = 1;
   } finally { store.close(); }
+  if (values['voice-dialogue']) {
+    const dialogueStore = new Store(':memory:');
+    try {
+      const project = dialogueStore.createProject({ name: 'Synthetic voice context check', conditions: [{ id: 'offline', text: 'オフライン保存を維持する', reason: '通信できない場所でも保存するため' }] });
+      dialogueStore.ingest({ schemaVersion: 1, eventId: 'sync-options', projectId: project.id,
+        source: { adapter: 'synthetic', sessionId: 'voice-check', epoch: 0 }, sequence: 1,
+        occurredAt: new Date().toISOString(), kind: 'message', origin: 'agent', payload: { role: 'assistant', text: 'オフライン保存を維持し、同期は自動または手動にできます。' } });
+      const snapshot = dialogueStore.snapshot(project.id, 'synthetic', 'voice-check');
+      const question = dialogueStore.propose(snapshot, { question: '同期は自動と手動のどちらにしますか？',
+        reason: '接続試験用の選択肢です。', evidenceEventIds: ['sync-options'], conditionIds: ['offline'] });
+      const turn = { turnId: 'relative-choice', dialogueId: dialogueStore.resetVoiceDialogue(question.id), expectedVersion: question.version, transcript: '二つ目でお願いします。' };
+      const decision = await new OpenAIProvider(key).respondToVoice(snapshot, question, turn.transcript, null, {
+        turns: [{ human: '同期の選択肢を教えてください。', assistant: '一つ目は自動同期、二つ目は手動同期です。どちらもオフライン保存を維持します。' }], omittedTurns: 0, draftAnswer: null });
+      dialogueStore.recordVoiceResult(question.id, turn, decision);
+      const resolved = decision.intent === 'draft' && Boolean(decision.answerText?.includes('手動'));
+      report.voiceDialogue = { status: resolved ? 'relative_answer_resolved_from_dialogue' : 'relative_answer_unverified',
+        answerCommitted: dialogueStore.deliveries().length > 0, microphoneUsed: false };
+      if (!resolved || dialogueStore.deliveries().length) process.exitCode = 1;
+    } catch (error) {
+      report.voiceDialogue = { status: 'failed', code: error instanceof DomainError ? error.code : 'unexpected_error' }; process.exitCode = 1;
+    } finally { dialogueStore.close(); }
+  }
   if (values.live) {
     const live = await probeLive(key); const { pcm, ...metadata } = live;
     report.live = metadata;

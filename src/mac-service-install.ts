@@ -31,9 +31,11 @@ export function installServiceFiles(plist: string, manifestPath: string, owner: 
   }
   const receiptText = contents(receiptPath), receiptEntry = lstatSync(receiptPath);
   checkpoint('receipt');
-  const prefix = join(dirname(manifestPath), '.install-' + receipt.nonce);
-  const stages = [[prefix + '.plist', owner.plistPath, plist],
-    [prefix + '.owner.json', manifestPath, JSON.stringify(receipt.owner, null, 2)]] as const;
+  // Each staging link must share its destination's filesystem. The checkout may
+  // be on another volume from ~/Library/LaunchAgents. Non-plist stage suffixes
+  // keep launchd from treating an incomplete stage as a second service.
+  const stages = [[join(dirname(owner.plistPath), '.innovox-' + receipt.nonce + '.plist.stage'), owner.plistPath, plist],
+    [join(dirname(manifestPath), '.install-' + receipt.nonce + '.owner.json'), manifestPath, JSON.stringify(receipt.owner, null, 2)]] as const;
   for (const [stage, target, text] of stages) {
     if (!existsSync(stage)) writeFileSync(stage, text, { flag: 'wx', mode: 0o600 });
     if (contents(stage) !== text) throw new Error('Install staging bytes changed; preserve them for review.');

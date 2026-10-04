@@ -4,6 +4,23 @@ import { Store } from '../src/store.js';
 import { seedDemo } from '../src/demo.js';
 import { VoiceConversations } from '../src/voice-conversations.js';
 
+test('cached voice replies cannot bypass an expired consultation', async () => {
+  let now = new Date('2026-10-04T00:00:00Z');
+  const store = new Store(':memory:', () => now); seedDemo(store); const q = store.consultations()[0]!;
+  const turn = { dialogueId: store.resetVoiceDialogue(q.id), turnId: 'expiring-reply', expectedVersion: q.version, transcript: 'Synthetic answer' };
+  store.recordVoiceResult(q.id, turn, { intent: 'draft', reply: 'Draft', answerText: 'Keep offline.' });
+  let calls = 0;
+  const service = new VoiceConversations(store, { available: true, async respondToVoice() {
+    calls++; return { intent: 'draft', reply: 'Draft', answerText: 'Unexpected' };
+  } });
+  try {
+    now = new Date(now.getTime() + 16 * 60_000);
+    await assert.rejects(service.interpret(q.id, turn), (e: unknown) => (e as { code: string }).code === 'stale_context');
+    assert.equal(calls, 0); assert.equal(store.deliveries().length, 0);
+    assert.equal(store.voiceState(q.id)?.history.turns.length, 1);
+  } finally { store.close(); }
+});
+
 test('dialogue reset rejects old in-flight results and cached confirmations', async () => {
   const store = new Store(':memory:'); seedDemo(store); const q = store.consultations()[0]!;
   let release!: () => void; const gate = new Promise<void>(resolve => { release = resolve; });

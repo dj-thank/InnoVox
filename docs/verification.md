@@ -1,6 +1,46 @@
 # Verification record
 
-Date: 2026-09-26. Scope: the first single-user conversation/consultation preview.
+Updated: 2026-10-04. Scope: the single-user conversation/consultation preview.
+
+## Dialogue and operational recovery (0.5)
+
+- Node.js 24.19.0 on Windows: strict TypeScript and all 68 tests passed,
+  including the isolated native Codex test. CI normally skips that one native
+  check unless an exact binary is selected. Eight schema artifacts are exported.
+- Local checks cover scoped multi-turn voice history, correction before
+  readback, old-dialogue result/cache rejection and delayed HTTP requests after
+  reconnect. Missing client dialogue identity is rejected before model use;
+  requests from the previous connection cannot alter the new history or outbox.
+- Voice-turn v2 requires the `dialogueId` returned by `/api/live/session`.
+  The published v1 schema remains available as a legacy artifact. Existing
+  browsers must reload after this upgrade; the server advertises version 2.
+- Database version 4 adds dialogue identity and clears legacy voice state/cache
+  in a transaction. Questions, decisions, answers and deliveries are retained.
+  A v3 schema fixture with the old voice JSON verifies migration and prevents
+  old readback state from committing an answer. In-flight delivery remains unknown.
+- Backup checks cover invalid sources, failed publication, foreign-file
+  preservation and versions 1–4. Mac setup checkpoints can resume an owned
+  interrupted installation. Each hard-link stage is beside its destination,
+  allowing checkout and LaunchAgents directories on different local volumes.
+- A full browser-session pool retains the valid pairing code. The owner can
+  explicitly revoke all browser connections without restarting the service.
+- The isolated native Codex test passes with the currently installed CLI
+  `0.160.0` on Windows. It verifies persisted delivery with synthetic messages
+  and requests no model turn; normal Desktop attachment and actual use remain open.
+
+The previous provider success below is historical. On 2026-10-04 the existing
+credential was rejected with HTTP 401 and `invalid_api_key`, including a bounded
+model-list authentication check. Astra analysis, the new dialogue diagnostic
+and GPT Live could not be verified with that credential. Its expiration/revocation
+cause was not established. Replacement or re-registration is pending.
+
+The current tailnet policy was finally read from the authenticated JSON editor.
+The intended Mac-to-host HTTPS port was absent from its matching grants, and the
+old test backend had also stopped. A minimal grant and adjacent-port tests were
+prepared for review, preserving unrelated rules. They have not been saved.
+The restarted provider-free preview responds on the host; no Mac/browser/voice
+acceptance is inferred from that. Private policy bytes and host details remain
+outside this public repository.
 
 ## Mac operation preparation (0.4)
 

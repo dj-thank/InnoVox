@@ -51,3 +51,21 @@ test('Mac receipt and completed-file checkpoints resume and changed staged bytes
     assert.ok(existsSync(manifest + '.install.json'));
   } finally { assert.ok(resolve(directory).startsWith(parent + sep)); rmSync(directory, { recursive: true }); }
 });
+
+test('Mac plist staging stays beside its target when checkout and LaunchAgents directories differ', () => {
+  const parent = resolve('.innovox'); mkdirSync(parent, { recursive: true });
+  const directory = mkdtempSync(join(parent, 'mac-separate-paths-'));
+  const launchAgents = join(directory, 'LaunchAgents'), state = join(directory, 'checkout-state');
+  mkdirSync(launchAgents); mkdirSync(state);
+  const plistPath = join(launchAgents, 'service.plist'), manifest = join(state, 'owner.json'), plist = 'synthetic separate target';
+  const owner = { root: '/synthetic/root', node: '/synthetic/node', label: 'separate', plistPath, uid: 501,
+    digest: createHash('sha256').update(plist).digest('hex'), installedAt: new Date().toISOString() };
+  try {
+    assert.throws(() => installServiceFiles(plist, manifest, owner, phase => { if (phase === 'plist') throw new Error('interrupted'); }));
+    assert.ok(readdirSync(launchAgents).some(name => name.endsWith('.plist.stage')));
+    assert.ok(!readdirSync(state).some(name => name.endsWith('.plist.stage')));
+    installServiceFiles(plist, manifest, owner);
+    assert.deepEqual(readdirSync(launchAgents), ['service.plist']);
+    assert.deepEqual(readdirSync(state), ['owner.json']);
+  } finally { assert.ok(resolve(directory).startsWith(parent + sep)); rmSync(directory, { recursive: true }); }
+});
