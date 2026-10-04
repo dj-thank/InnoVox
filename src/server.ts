@@ -78,6 +78,10 @@ export function buildServer(options: ServerOptions) {
       if (req.method === 'POST' && url.pathname === '/api/logout') {
         await body(req); pairing.revoke(bearer); send(res, 200, { disconnected: true }); return;
       }
+      if (req.method === 'POST' && url.pathname === '/api/pairing/revoke-all') {
+        if (!owner) throw new DomainError('owner_required', 'Only the server owner can revoke all browser sessions.', 403);
+        z.object({}).strict().parse(await body(req)); send(res, 200, pairing.revokeAll()); return;
+      }
       if (req.method === 'GET' && url.pathname === '/api/state') {
         const projectId = url.searchParams.get('projectId') || undefined;
         if (projectId) store.project(id.parse(projectId));

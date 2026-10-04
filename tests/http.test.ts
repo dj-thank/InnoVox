@@ -29,10 +29,19 @@ test('HTTP slice: auth, explicit demo, persisted reply, rejection of cross-origi
     assert.notEqual(paired.accessToken, token);
     assert.equal((await fetch(base + '/api/state', { headers: browserHeaders })).status, 200);
     assert.equal((await fetch(base + '/api/pairing', { method: 'POST', headers: browserHeaders, body: '{}' })).status, 403);
+    assert.equal((await fetch(base + '/api/pairing/revoke-all', { method: 'POST', headers: browserHeaders, body: '{}' })).status, 403);
     assert.equal((await fetch(base + '/api/pairing/exchange', { method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code: pairing.code }) })).status, 401);
     assert.equal((await fetch(base + '/api/logout', { method: 'POST', headers: browserHeaders, body: '{}' })).status, 200);
     assert.equal((await fetch(base + '/api/state', { headers: browserHeaders })).status, 401);
+    const recoveryCode = await (await fetch(base + '/api/pairing', { method: 'POST', headers, body: '{}' })).json();
+    const recoveryBrowser = await (await fetch(base + '/api/pairing/exchange', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: recoveryCode.code }) })).json();
+    const remainingCode = await (await fetch(base + '/api/pairing', { method: 'POST', headers, body: '{}' })).json();
+    const revoked = await fetch(base + '/api/pairing/revoke-all', { method: 'POST', headers, body: '{}' });
+    assert.equal(revoked.status, 200); assert.equal((await revoked.json()).revoked, 1);
+    assert.equal((await fetch(base + '/api/state', { headers: { Authorization: `Bearer ${recoveryBrowser.accessToken}` } })).status, 401);
+    assert.equal((await fetch(base + '/api/state', { headers })).status, 200);
+    assert.equal((await fetch(base + '/api/pairing/exchange', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: remainingCode.code }) })).status, 200);
     assert.equal((await fetch(base + '/api/demo', { method: 'POST', headers: { ...headers, Origin: 'https://foreign.example' }, body: '{}' })).status, 403);
     const p = await (await fetch(base + '/api/demo', { method: 'POST', headers, body: '{}' })).json();
     const state = await (await fetch(base + '/api/state?projectId=' + p.id, { headers })).json();

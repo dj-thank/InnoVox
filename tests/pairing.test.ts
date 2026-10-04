@@ -20,3 +20,12 @@ test('five wrong attempts invalidate a code and browser credentials expire', () 
   const second = pairing.create(), browser = pairing.exchange(second.code);
   now += 12 * 60 * 60_000 + 1; assert.equal(pairing.valid(browser.accessToken), false);
 });
+
+test('full browser slots preserve a valid code for explicit owner recovery', () => {
+  const pairing = new BrowserPairing();
+  const tokens = Array.from({ length: 16 }, () => pairing.exchange(pairing.create().code).accessToken);
+  const code = pairing.create().code;
+  assert.throws(() => pairing.exchange(code), (error: unknown) => error instanceof DomainError && error.code === 'pairing_limit');
+  pairing.revoke(tokens[0]!);
+  assert.ok(pairing.valid(pairing.exchange(code).accessToken));
+});

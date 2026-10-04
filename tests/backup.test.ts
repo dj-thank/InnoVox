@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, rm, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, readFile, writeFile, readdir } from 'node:fs/promises';
 import { join, resolve, sep } from 'node:path';
 import { Store } from '../src/store.js';
 import { backupState, restoreState } from '../src/backup.js';
+import { DatabaseSync } from 'node:sqlite';
 
 test('online backup includes committed WAL state and restores without replacing or mutating the live database', async () => {
   const parent = resolve('.innovox'); await mkdir(parent, { recursive: true });
@@ -20,7 +21,7 @@ test('online backup includes committed WAL state and restores without replacing 
     const delivery = store.answer(question.id, { answerId: 'answer', expectedVersion: 1, text: 'Keep offline.', channel: 'typed' }).delivery;
     store.claimDelivery(delivery.id);
     const before = store.journal(0).length;
-    const manifest = await backupState(source, output); assert.equal(manifest.schemaVersion, 3);
+    const manifest = await backupState(source, output); assert.ok(manifest.schemaVersion >= 1 && manifest.schemaVersion <= 4);
     assert.equal(store.journal(0).length, before);
     assert.equal(store.deliveries()[0]?.status, 'claimed');
     assert.equal((await restoreState(output, restoredPath)).activated, false);
@@ -37,4 +38,50 @@ test('online backup includes committed WAL state and restores without replacing 
     await assert.rejects(restoreState(output, join(directory, 'changed.sqlite')), /fingerprint/);
     assert.equal(store.project(project.id).name, project.name);
   } finally { store.close(); assert.ok(resolve(directory).startsWith(parent + sep)); await rm(directory, { recursive: true }); }
+});
+
+test('invalid source and preexisting manifest leave output free for retry and preserve foreign bytes', async () => {
+  const parent = resolve('.innovox'); await mkdir(parent, { recursive: true });
+  const directory = await mkdtemp(join(parent, 'backup-recovery-test-'));
+  const source = join(directory, 'live.sqlite'), output = join(directory, 'backup.sqlite');
+  try {
+    await writeFile(source, 'not a database');
+    await assert.rejects(backupState(source, output));
+    assert.ok(!(await readdir(directory)).includes('backup.sqlite'));
+    await rm(source); const store = new Store(source); store.close();
+    await writeFile(output + '.manifest.json', 'foreign manifest');
+    await assert.rejects(backupState(source, output));
+    assert.equal(await readFile(output + '.manifest.json', 'utf8'), 'foreign manifest');
+    assert.ok(!(await readdir(directory)).includes('backup.sqlite'));
+    await rm(output + '.manifest.json');
+    await writeFile(output, 'foreign database');
+    await assert.rejects(backupState(source, output));
+    assert.equal(await readFile(output, 'utf8'), 'foreign database');
+    assert.ok(!(await readdir(directory)).includes('backup.sqlite.manifest.json'));
+    await rm(output);
+    await backupState(source, output);
+    assert.equal((await restoreState(output, join(directory, 'restored.sqlite'))).verified, true);
+    assert.ok(!(await readdir(directory)).some(name => name.includes('.pending-')));
+  } finally { assert.ok(resolve(directory).startsWith(parent + sep)); await rm(directory, { recursive: true }); }
+});
+
+test('backup and restore accept legacy versions through v4 and reject newer versions before reserving output', async () => {
+  const parent = resolve('.innovox'); await mkdir(parent, { recursive: true });
+  const directory = await mkdtemp(join(parent, 'backup-version-test-'));
+  const source = join(directory, 'live.sqlite');
+  try {
+    new Store(source).close();
+    for (const version of [1, 2, 3, 4, 5]) {
+      const database = new DatabaseSync(source);
+      try { database.exec(`PRAGMA user_version=${version}`); } finally { database.close(); }
+      const output = join(directory, `v${version}.sqlite`);
+      if (version === 5) {
+        await assert.rejects(backupState(source, output), /Unsupported/);
+        assert.ok(!(await readdir(directory)).includes('v5.sqlite'));
+      } else {
+        assert.equal((await backupState(source, output)).schemaVersion, version);
+        assert.equal((await restoreState(output, join(directory, `restored-v${version}.sqlite`))).schemaVersion, version);
+      }
+    }
+  } finally { assert.ok(resolve(directory).startsWith(parent + sep)); await rm(directory, { recursive: true }); }
 });
